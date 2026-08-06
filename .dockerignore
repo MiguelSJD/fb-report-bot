@@ -1,0 +1,11 @@
+# Exclude secrets and local setup files
+.env
+credentials.json
+
+# Exclude Python cache and git directory
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git/
+.gitignore
