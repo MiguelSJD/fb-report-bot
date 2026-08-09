@@ -3,39 +3,55 @@ Daily report generator module for FB Report Bot.
 """
 
 import time
+import asyncio
+import discord
+from dataclasses import dataclass
 from collections import OrderedDict
 from datetime import datetime
+
 from utils.constants import (
     TRIGGER_CELL,
     SHEET_UPDATE_DELAY,
+    DATE_FORMAT,
     COL_DATE,
     COL_TOPIC,
     COL_VOTES,
 )
 from utils.formatting import get_clean_val, capitalize_text
+from utils.google_sheets import get_worksheet
+from utils.discord import send_report_response, validate_interaction
+from models.log_level import LogLevel
+from utils.logger import log_event
 
-LOOKBACK_DAYS_VALUE = "1"
-START_ROW_IDX = 3
-END_ROW_IDX = 8
-MIN_VOTE_THRESHOLD = 50
+
+@dataclass(frozen=True)
+class DailyReportConfig:
+    lookback_days_trigger: str = "1"
+    start_row_idx: int = 3
+    end_row_idx: int = 8
+    min_vote_threshold: int = 50
+    topic_split_max: int = 1
+
+
+CONFIG = DailyReportConfig()
 
 
 def generate_daily_report(worksheet) -> str:
-    """Generate a daily report from rows 4-8 of the worksheet."""
+    """Generate a daily report from the configured worksheet rows."""
     try:
-        worksheet.update_acell(TRIGGER_CELL, LOOKBACK_DAYS_VALUE)
+        worksheet.update_acell(TRIGGER_CELL, CONFIG.lookback_days_trigger)
         time.sleep(SHEET_UPDATE_DELAY)
     except Exception as exc:
-        print(f"Warning: Failed to update cell {TRIGGER_CELL}: {exc}")
+        log_event(None, LogLevel.WARNING, f"Failed to update trigger cell {TRIGGER_CELL}: {exc}", exc=exc)
 
     all_values = worksheet.get_all_values()
-    current_date = datetime.now().strftime("%d/%m/%Y")
+    current_date = datetime.now().strftime(DATE_FORMAT)
 
     grouped_categories = OrderedDict()
     data_issues = []
     all_rows_empty = True
 
-    for row_idx in range(START_ROW_IDX, END_ROW_IDX):
+    for row_idx in range(CONFIG.start_row_idx, CONFIG.end_row_idx):
         sheet_row_num = row_idx + 1
         row_date = get_clean_val(all_values, row_idx, COL_DATE)
         topic_raw = get_clean_val(all_values, row_idx, COL_TOPIC)
@@ -71,12 +87,12 @@ def generate_daily_report(worksheet) -> str:
             data_issues.append(f"- **Row {sheet_row_num}**: Corrupted or incomplete data ({', '.join(row_issues)}).")
             continue
 
-        if vote_count < MIN_VOTE_THRESHOLD:
+        if vote_count < CONFIG.min_vote_threshold:
             continue
 
-        topic_parts = topic_raw.split("=", 1)
-        category = capitalize_text(topic_parts[0])
-        subcategory = capitalize_text(topic_parts[1])
+        category_raw, subcategory_raw = topic_raw.split("=", CONFIG.topic_split_max)
+        category = capitalize_text(category_raw)
+        subcategory = capitalize_text(subcategory_raw)
 
         if category not in grouped_categories:
             grouped_categories[category] = []
@@ -102,3 +118,23 @@ def generate_daily_report(worksheet) -> str:
         report_lines.extend(data_issues)
 
     return "\n".join(report_lines)
+
+
+async def handle_daily_report(interaction: discord.Interaction):
+    """Handle the daily-report slash command logic."""
+    guild_id = interaction.guild_id if interaction.guild else None
+    is_valid, error_msg = validate_interaction(interaction)
+    if not is_valid:
+        log_event(guild_id, LogLevel.WARNING, f"Invalid daily-report interaction: {error_msg}")
+        await interaction.response.send_message(content=error_msg, ephemeral=True)
+        return
+
+    try:
+        log_event(guild_id, LogLevel.INFO, f"User {interaction.user} triggered /daily-report")
+        await interaction.response.defer(ephemeral=False)
+        report_text = await asyncio.to_thread(lambda: generate_daily_report(get_worksheet()))
+        await send_report_response(interaction, report_text)
+    except Exception as e:
+        log_event(guild_id, LogLevel.ERROR, f"Daily report generation failed: {e}", exc=e)
+        error_msg = f"❌ **Report generation failed**\n\n`{str(e)}`"
+        await interaction.followup.send(content=error_msg, ephemeral=True)
