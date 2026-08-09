@@ -1,4 +1,4 @@
-# Project specific secrets - DO NOT COMMIT!
+# Project specific secrets
 credentials.json
 .env
 
@@ -7,6 +7,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# Pytest & Test Caches
+.pytest_cache/
+.coverage
 
 # Virtual Environments
 venv/
@@ -30,6 +34,9 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Database
+*.db
 
 # IDEs and Editors
 .vscode/
