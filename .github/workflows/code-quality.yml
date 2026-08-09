@@ -5,18 +5,22 @@ on:
     types:
       - opened
       - synchronize
+      - labeled
 
 jobs:
   ruff-annotations:
     name: "code-quality"
     runs-on: ubuntu-latest
+    if: |
+      github.event.action != 'labeled' || 
+      github.event.label.name == 'ci:code-quality'
     permissions:
       contents: read
       pull-requests: write
       checks: write
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
