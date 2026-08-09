@@ -1,4 +1,4 @@
-name: "ci/pr-checks"
+name: "CI"
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   status-check-pr:
-    name: status check pr
+    name: pr-checks
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR Title and Description
