@@ -2,28 +2,35 @@
 Mid-week report generator module for FB Report Bot.
 """
 
-import time
 import asyncio
-import discord
-from dataclasses import dataclass
+import time
 from collections import OrderedDict
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
-from utils.constants import (
-    TRIGGER_CELL,
-    SHEET_UPDATE_DELAY,
-    DATE_FORMAT,
-    COL_DATE,
-    COL_TOPIC,
-    COL_OBSERVATION,
-    COL_CONSEQUENCE,
-    COL_SOLUTION,
-    COL_VOTES,
-)
-from utils.formatting import get_clean_val, capitalize_text, get_unique_non_empty, sanitize_markdown
-from utils.google_sheets import get_worksheet
-from utils.discord import send_report_response, validate_interaction
+import discord
+from gspread.exceptions import GSpreadException
+
 from models.log_level import LogLevel
+from utils.constants import (
+    COL_CONSEQUENCE,
+    COL_DATE,
+    COL_OBSERVATION,
+    COL_SOLUTION,
+    COL_TOPIC,
+    COL_VOTES,
+    DATE_FORMAT,
+    SHEET_UPDATE_DELAY,
+    TRIGGER_CELL,
+)
+from utils.discord import send_report_response, validate_interaction
+from utils.formatting import (
+    capitalize_text,
+    get_clean_val,
+    get_unique_non_empty,
+    sanitize_markdown,
+)
+from utils.google_sheets import get_worksheet
 from utils.logger import log_event
 
 
@@ -40,7 +47,9 @@ class MidWeekReportConfig:
 CONFIG = MidWeekReportConfig()
 
 
-def _build_category_detail_message(position: int, category: str, items: list[dict]) -> str:
+def _build_category_detail_message(
+    position: int, category: str, items: list[dict]
+) -> str:
     """Formats a single category's detailed feedback into a formatted report block."""
     total_category_votes = sum(item["votes"] for item in items)
     lines = [f"—-———-—- **{position}. {category}** ———————--"]
@@ -72,13 +81,20 @@ def generate_mid_week_report(worksheet) -> list[str]:
     try:
         worksheet.update_acell(TRIGGER_CELL, CONFIG.lookback_days_trigger)
         time.sleep(SHEET_UPDATE_DELAY)
-    except Exception as exc:
-        log_event(None, LogLevel.WARNING, f"Failed to update trigger cell {TRIGGER_CELL}: {exc}", exc=exc)
+    except GSpreadException as exc:
+        log_event(
+            None,
+            LogLevel.WARNING,
+            f"Failed to update trigger cell {TRIGGER_CELL}: {exc}",
+            exc=exc,
+        )
 
     all_values = worksheet.get_all_values()
 
-    now = datetime.now()
-    start_date = (now - timedelta(days=CONFIG.lookback_days_delta)).strftime(DATE_FORMAT)
+    now = datetime.now(timezone.utc)
+    start_date = (now - timedelta(days=CONFIG.lookback_days_delta)).strftime(
+        DATE_FORMAT
+    )
     end_date = now.strftime(DATE_FORMAT)
 
     grouped_categories = OrderedDict()
@@ -118,7 +134,9 @@ def generate_mid_week_report(worksheet) -> list[str]:
                 row_issues.append(f"invalid vote format ('{votes_raw}')")
 
         if row_issues:
-            data_issues.append(f"- **Row {sheet_row_num}**: Corrupted or incomplete data ({', '.join(row_issues)}).")
+            data_issues.append(
+                f"- **Row {sheet_row_num}**: Corrupted or incomplete data ({', '.join(row_issues)})."
+            )
             continue
 
         topic_parts = topic_raw.split("=", CONFIG.topic_split_max)
@@ -128,13 +146,15 @@ def generate_mid_week_report(worksheet) -> list[str]:
         if category not in grouped_categories:
             grouped_categories[category] = []
 
-        grouped_categories[category].append({
-            "subcategory": sanitize_markdown(subcategory),
-            "votes": vote_count,
-            "observation": sanitize_markdown(observation),
-            "consequence": sanitize_markdown(consequence),
-            "solution": sanitize_markdown(solution),
-        })
+        grouped_categories[category].append(
+            {
+                "subcategory": sanitize_markdown(subcategory),
+                "votes": vote_count,
+                "observation": sanitize_markdown(observation),
+                "consequence": sanitize_markdown(consequence),
+                "solution": sanitize_markdown(solution),
+            }
+        )
 
     if all_rows_empty:
         return ["No valid reports"]
@@ -150,9 +170,13 @@ def generate_mid_week_report(worksheet) -> list[str]:
     else:
         for category, items in grouped_categories.items():
             total_category_votes = sum(item["votes"] for item in items)
-            summary_lines.append(f"\n### 📁 {category} (`{total_category_votes}` total votes)")
+            summary_lines.append(
+                f"\n### 📁 {category} (`{total_category_votes}` total votes)"
+            )
             for item in items:
-                summary_lines.append(f"• **{item['subcategory']}** — `{item['votes']}` votes")
+                summary_lines.append(
+                    f"• **{item['subcategory']}** — `{item['votes']}` votes"
+                )
 
     if data_issues:
         summary_lines.append("\n---")
@@ -170,7 +194,9 @@ def generate_mid_week_report(worksheet) -> list[str]:
         reverse=True,
     )
 
-    for position, (category, items) in enumerate(sorted_categories, start=CONFIG.rank_start_index):
+    for position, (category, items) in enumerate(
+        sorted_categories, start=CONFIG.rank_start_index
+    ):
         message = _build_category_detail_message(position, category, items)
         messages.append(message)
 
@@ -182,18 +208,37 @@ async def handle_mid_week_report(interaction: discord.Interaction):
     guild_id = interaction.guild_id if interaction.guild else None
     is_valid, error_msg = validate_interaction(interaction)
     if not is_valid:
-        log_event(guild_id, LogLevel.WARNING, f"Invalid mid-week-report interaction: {error_msg}")
+        log_event(
+            guild_id,
+            LogLevel.WARNING,
+            f"Invalid mid-week-report interaction: {error_msg}",
+        )
         await interaction.response.send_message(content=error_msg, ephemeral=True)
         return
 
     try:
-        log_event(guild_id, LogLevel.INFO, f"User {interaction.user} triggered /mid-week-report")
+        log_event(
+            guild_id,
+            LogLevel.INFO,
+            f"User {interaction.user} triggered /mid-week-report",
+        )
         await interaction.response.defer(ephemeral=False)
-        report_messages = await asyncio.to_thread(lambda: generate_mid_week_report(get_worksheet()))
+        report_messages = await asyncio.to_thread(
+            lambda: generate_mid_week_report(get_worksheet())
+        )
         await send_report_response(interaction, report_messages)
-    except Exception as e:
-        log_event(guild_id, LogLevel.ERROR, f"Mid-week report generation failed: {e}", exc=e)
-        error_msg = f"❌ **Report generation failed**\n\n`{str(e)}`"
+    except (
+        discord.HTTPException,
+        discord.app_commands.AppCommandError,
+        discord.DiscordException,
+    ) as exc:
+        log_event(
+            guild_id,
+            LogLevel.ERROR,
+            f"Mid-week report generation failed: {exc}",
+            exc=exc,
+        )
+        error_msg = f"❌ **Report generation failed**\n\n`{exc!s}`"
         if interaction.response.is_done():
             await interaction.followup.send(content=error_msg, ephemeral=True)
         else:

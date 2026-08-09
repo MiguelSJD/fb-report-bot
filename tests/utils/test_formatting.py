@@ -3,11 +3,11 @@ Unit tests for formatting and text manipulation utilities.
 """
 
 from utils.formatting import (
-    get_clean_val,
     capitalize_text,
+    get_clean_val,
     get_unique_non_empty,
-    split_message_smartly,
     sanitize_markdown,
+    split_message_smartly,
 )
 
 

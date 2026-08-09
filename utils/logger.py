@@ -2,12 +2,13 @@
 Structured JSONL Python Logger with Dynamic Guild-Based Paths and Auto-Cleanup.
 """
 
-import sys
 import json
 import logging
-from pathlib import Path
-from config import DATA_ROOT
+import sys
 from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
+
+from config import DATA_ROOT
 from models.log_level import LogLevel
 
 LOG_RETENTION_DAYS = 7
@@ -52,14 +53,17 @@ def _get_server_logger(guild_id: int | str | None) -> logging.Logger:
             when="midnight",
             utc=True,
             backupCount=LOG_RETENTION_DAYS,
-            encoding="utf-8"
+            encoding="utf-8",
         )
         file_handler.suffix = "%Y-%m-%d.jsonl"
         file_handler.setFormatter(JsonLineFormatter())
 
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setFormatter(
-            logging.Formatter(fmt="%(levelname)s - %(asctime)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+            logging.Formatter(
+                fmt="%(levelname)s - %(asctime)s - %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
         )
 
         logger.addHandler(file_handler)
@@ -69,10 +73,10 @@ def _get_server_logger(guild_id: int | str | None) -> logging.Logger:
 
 
 def log_event(
-        guild_id: int | str | None,
-        level: LogLevel,
-        message: str,
-        exc: Exception | None = None
+    guild_id: int | str | None,
+    level: LogLevel,
+    message: str,
+    exc: Exception | None = None,
 ) -> None:
     """Logs a structured message to target server logs and Docker console."""
     logger = _get_server_logger(guild_id)

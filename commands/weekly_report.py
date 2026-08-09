@@ -2,25 +2,27 @@
 Weekly Top 10 report generator module for FB Report Bot.
 """
 
-import time
 import asyncio
-import discord
+import time
 from dataclasses import dataclass
 
-from utils.constants import (
-    TRIGGER_CELL,
-    SHEET_UPDATE_DELAY,
-    COL_DATE,
-    COL_TOPIC,
-    COL_OBSERVATION,
-    COL_CONSEQUENCE,
-    COL_SOLUTION,
-    COL_VOTES,
-)
-from utils.formatting import get_clean_val, capitalize_text, sanitize_markdown
-from utils.google_sheets import get_worksheet
-from utils.discord import send_report_response, validate_interaction
+import discord
+from gspread.exceptions import GSpreadException
+
 from models.log_level import LogLevel
+from utils.constants import (
+    COL_CONSEQUENCE,
+    COL_DATE,
+    COL_OBSERVATION,
+    COL_SOLUTION,
+    COL_TOPIC,
+    COL_VOTES,
+    SHEET_UPDATE_DELAY,
+    TRIGGER_CELL,
+)
+from utils.discord import send_report_response, validate_interaction
+from utils.formatting import capitalize_text, get_clean_val, sanitize_markdown
+from utils.google_sheets import get_worksheet
 from utils.logger import log_event
 
 
@@ -41,8 +43,13 @@ def generate_weekly_top_10_report(worksheet) -> list[str]:
     try:
         worksheet.update_acell(TRIGGER_CELL, CONFIG.lookback_days_trigger)
         time.sleep(SHEET_UPDATE_DELAY)
-    except Exception as exc:
-        log_event(None, LogLevel.WARNING, f"Failed to update trigger cell {TRIGGER_CELL}: {exc}", exc=exc)
+    except GSpreadException as exc:
+        log_event(
+            None,
+            LogLevel.WARNING,
+            f"Failed to update trigger cell {TRIGGER_CELL}: {exc}",
+            exc=exc,
+        )
 
     all_values = worksheet.get_all_values()
     report_items = []
@@ -86,14 +93,16 @@ def generate_weekly_top_10_report(worksheet) -> list[str]:
         category = capitalize_text(topic_parts[0])
         subcategory = capitalize_text(topic_parts[1])
 
-        report_items.append({
-            "category": category,
-            "subcategory": subcategory,
-            "votes": vote_count,
-            "observation": sanitize_markdown(observation),
-            "consequence": sanitize_markdown(consequence),
-            "solution": sanitize_markdown(solution),
-        })
+        report_items.append(
+            {
+                "category": category,
+                "subcategory": subcategory,
+                "votes": vote_count,
+                "observation": sanitize_markdown(observation),
+                "consequence": sanitize_markdown(consequence),
+                "solution": sanitize_markdown(solution),
+            }
+        )
 
     if all_rows_empty or not report_items:
         return ["No valid reports"]
@@ -126,18 +135,34 @@ async def handle_weekly_report_top_10(interaction: discord.Interaction):
     guild_id = interaction.guild_id if interaction.guild else None
     is_valid, error_msg = validate_interaction(interaction)
     if not is_valid:
-        log_event(guild_id, LogLevel.WARNING, f"Invalid weekly-report interaction: {error_msg}")
+        log_event(
+            guild_id,
+            LogLevel.WARNING,
+            f"Invalid weekly-report interaction: {error_msg}",
+        )
         await interaction.response.send_message(content=error_msg, ephemeral=True)
         return
 
     try:
-        log_event(guild_id, LogLevel.INFO, f"User {interaction.user} triggered /weekly-report-top-10")
+        log_event(
+            guild_id,
+            LogLevel.INFO,
+            f"User {interaction.user} triggered /weekly-report-top-10",
+        )
         await interaction.response.defer(ephemeral=False)
-        report_messages = await asyncio.to_thread(lambda: generate_weekly_top_10_report(get_worksheet()))
+        report_messages = await asyncio.to_thread(
+            lambda: generate_weekly_top_10_report(get_worksheet())
+        )
         await send_report_response(interaction, report_messages)
-    except Exception as e:
-        log_event(guild_id, LogLevel.ERROR, f"Weekly report generation failed: {e}", exc=e)
-        error_msg = f"❌ **Report generation failed**\n\n`{str(e)}`"
+    except (
+        discord.HTTPException,
+        discord.app_commands.AppCommandError,
+        discord.DiscordException,
+    ) as exc:
+        log_event(
+            guild_id, LogLevel.ERROR, f"Weekly report generation failed: {exc}", exc=exc
+        )
+        error_msg = f"❌ **Report generation failed**\n\n`{exc!s}`"
         if interaction.response.is_done():
             await interaction.followup.send(content=error_msg, ephemeral=True)
         else:

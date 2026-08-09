@@ -2,16 +2,17 @@
 Unit tests for server settings database CRUD operations using in-memory SQLite.
 """
 
-import pytest
-from unittest.mock import patch
 import sqlite3
 from contextlib import contextmanager
+from unittest.mock import patch
+
+import pytest
 
 from utils.server_settings import (
-    set_guild_channel,
+    get_all_guild_channels,
     get_guild_channel,
     remove_guild_channel,
-    get_all_guild_channels,
+    set_guild_channel,
 )
 
 
@@ -36,8 +37,10 @@ def mock_db():
     def _get_test_db():
         yield conn
 
-    with patch("utils.server_settings.get_db_connection", _get_test_db), \
-            patch("utils.database.get_db_connection", _get_test_db):
+    with (
+        patch("utils.server_settings.get_db_connection", _get_test_db),
+        patch("utils.database.get_db_connection", _get_test_db),
+    ):
         yield conn
 
     conn.close()

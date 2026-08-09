@@ -1,7 +1,9 @@
 from enum import Enum
 
+
 class LogLevel(str, Enum):
     """Enumeration of supported application log levels."""
+
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"

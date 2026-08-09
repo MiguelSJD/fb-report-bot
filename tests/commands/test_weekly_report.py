@@ -2,18 +2,21 @@
 Unit tests for weekly top 10 report generation logic.
 """
 
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
-from datetime import datetime
+
 from commands.weekly_report import generate_weekly_top_10_report
 from utils.constants import DATE_FORMAT
 
 
 def test_generate_weekly_top_10_report_sorting():
     """Test top 10 items are correctly sorted by vote count descending."""
-    today = datetime.now().strftime(DATE_FORMAT)
+    today = datetime.now(timezone.utc).strftime(DATE_FORMAT)
 
     mock_values = [
-        [], [], [],
+        [],
+        [],
+        [],
         [today, "", "Feature=Option A", "Obs A", "Cons A", "Sol A", "10"],
         [today, "", "Feature=Option B", "Obs B", "Cons B", "Sol B", "500"],
     ]

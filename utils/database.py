@@ -2,6 +2,7 @@
 Database connection and initialization helper for FB Report Bot.
 Manages database connection lifecycle and schema initialization.
 """
+
 import os
 import sqlite3
 from contextlib import contextmanager
@@ -24,8 +25,10 @@ def get_db_connection():
     try:
         conn = sqlite3.connect(DB_PATH)
         yield conn
-    except sqlite3.Error as exc:
-        log_event(None, LogLevel.ERROR, f"SQLite database connection error: {exc}", exc=exc)
+    except (sqlite3.Error, OSError) as exc:
+        log_event(
+            None, LogLevel.ERROR, f"SQLite database connection error: {exc}", exc=exc
+        )
         raise
     finally:
         if conn:
@@ -48,9 +51,13 @@ def initialize_database():
                 """
             )
             conn.commit()
-            log_event(None, LogLevel.INFO, f"Database initialized successfully at: {DB_PATH}")
-    except Exception as exc:
-        log_event(None, LogLevel.CRITICAL, f"Failed to initialize database: {exc}", exc=exc)
+            log_event(
+                None, LogLevel.INFO, f"Database initialized successfully at: {DB_PATH}"
+            )
+    except (sqlite3.Error, OSError) as exc:
+        log_event(
+            None, LogLevel.CRITICAL, f"Failed to initialize database: {exc}", exc=exc
+        )
 
 
 initialize_database()

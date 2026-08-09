@@ -3,18 +3,26 @@ Shared broadcasting logic for automated crons.
 """
 
 import asyncio
+
 import discord
-from utils.server_settings import get_all_guild_channels
-from utils.formatting import split_message_smartly
+
 from models.log_level import LogLevel
+from utils.formatting import split_message_smartly
 from utils.logger import log_event
+from utils.server_settings import get_all_guild_channels
 
 
-async def broadcast_report_to_servers(bot: discord.Client, report_data: str | list[str]):
+async def broadcast_report_to_servers(
+    bot: discord.Client, report_data: str | list[str]
+):
     """Helper to send reports to all configured channels across all servers."""
     channel_ids = get_all_guild_channels()
     if not channel_ids:
-        log_event(None, LogLevel.WARNING, "Broadcast skipped: No servers have configured a cron channel.")
+        log_event(
+            None,
+            LogLevel.WARNING,
+            "Broadcast skipped: No servers have configured a cron channel.",
+        )
         return
 
     messages = [report_data] if isinstance(report_data, str) else report_data
@@ -29,14 +37,16 @@ async def broadcast_report_to_servers(bot: discord.Client, report_data: str | li
                 log_event(
                     None,
                     LogLevel.WARNING,
-                    f"Unable to access configured channel {channel_id} (bot was kicked or channel was deleted)."
+                    f"Unable to access configured channel {channel_id} (bot was kicked or channel was deleted).",
                 )
                 continue
 
         if not channel:
             continue
 
-        guild_id = channel.guild.id if hasattr(channel, "guild") and channel.guild else None
+        guild_id = (
+            channel.guild.id if hasattr(channel, "guild") and channel.guild else None
+        )
 
         for msg in messages:
             chunks = split_message_smartly(msg)
@@ -48,12 +58,16 @@ async def broadcast_report_to_servers(bot: discord.Client, report_data: str | li
                     log_event(
                         guild_id,
                         LogLevel.ERROR,
-                        f"Missing permissions to send broadcast message in channel {channel_id}."
+                        f"Missing permissions to send broadcast message in channel {channel_id}.",
                     )
-                except Exception as e:
+                except (
+                    discord.HTTPException,
+                    discord.DiscordException,
+                    OSError,
+                ) as exc:
                     log_event(
                         guild_id,
                         LogLevel.ERROR,
-                        f"Failed to send broadcast to channel {channel_id}: {e}",
-                        exc=e
+                        f"Failed to send broadcast to channel {channel_id}: {exc}",
+                        exc=exc,
                     )

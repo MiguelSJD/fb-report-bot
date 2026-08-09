@@ -2,25 +2,27 @@
 Daily report generator module for FB Report Bot.
 """
 
-import time
 import asyncio
-import discord
-from dataclasses import dataclass
+import time
 from collections import OrderedDict
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import datetime, timezone
 
+import discord
+from gspread.exceptions import GSpreadException
+
+from models.log_level import LogLevel
 from utils.constants import (
-    TRIGGER_CELL,
-    SHEET_UPDATE_DELAY,
-    DATE_FORMAT,
     COL_DATE,
     COL_TOPIC,
     COL_VOTES,
+    DATE_FORMAT,
+    SHEET_UPDATE_DELAY,
+    TRIGGER_CELL,
 )
-from utils.formatting import get_clean_val, capitalize_text
-from utils.google_sheets import get_worksheet
 from utils.discord import send_report_response, validate_interaction
-from models.log_level import LogLevel
+from utils.formatting import capitalize_text, get_clean_val
+from utils.google_sheets import get_worksheet
 from utils.logger import log_event
 
 
@@ -41,11 +43,16 @@ def generate_daily_report(worksheet) -> str:
     try:
         worksheet.update_acell(TRIGGER_CELL, CONFIG.lookback_days_trigger)
         time.sleep(SHEET_UPDATE_DELAY)
-    except Exception as exc:
-        log_event(None, LogLevel.WARNING, f"Failed to update trigger cell {TRIGGER_CELL}: {exc}", exc=exc)
+    except GSpreadException as exc:
+        log_event(
+            None,
+            LogLevel.WARNING,
+            f"Failed to update trigger cell {TRIGGER_CELL}: {exc}",
+            exc=exc,
+        )
 
     all_values = worksheet.get_all_values()
-    current_date = datetime.now().strftime(DATE_FORMAT)
+    current_date = datetime.now(timezone.utc).strftime(DATE_FORMAT)
 
     grouped_categories = OrderedDict()
     data_issues = []
@@ -84,7 +91,9 @@ def generate_daily_report(worksheet) -> str:
                 row_issues.append(f"invalid vote format ('{votes_raw}')")
 
         if row_issues:
-            data_issues.append(f"- **Row {sheet_row_num}**: Corrupted or incomplete data ({', '.join(row_issues)}).")
+            data_issues.append(
+                f"- **Row {sheet_row_num}**: Corrupted or incomplete data ({', '.join(row_issues)})."
+            )
             continue
 
         if vote_count < CONFIG.min_vote_threshold:
@@ -101,14 +110,20 @@ def generate_daily_report(worksheet) -> str:
     if all_rows_empty:
         return "No valid reports"
 
-    report_lines = ["# 📊 Daily Feedback Report", f"**Date:** `{current_date}`\n", "---"]
+    report_lines = [
+        "# 📊 Daily Feedback Report",
+        f"**Date:** `{current_date}`\n",
+        "---",
+    ]
 
     if not grouped_categories:
         report_lines.append("*No valid entries found meeting the criteria.*")
     else:
         for category, subcategories in grouped_categories.items():
             total_category_votes = sum(votes for _, votes in subcategories)
-            report_lines.append(f"\n### 📁 {category} (`{total_category_votes}` total votes)")
+            report_lines.append(
+                f"\n### 📁 {category} (`{total_category_votes}` total votes)"
+            )
             for subcategory, votes in subcategories:
                 report_lines.append(f"• **{subcategory}** — `{votes}` votes")
 
@@ -125,16 +140,28 @@ async def handle_daily_report(interaction: discord.Interaction):
     guild_id = interaction.guild_id if interaction.guild else None
     is_valid, error_msg = validate_interaction(interaction)
     if not is_valid:
-        log_event(guild_id, LogLevel.WARNING, f"Invalid daily-report interaction: {error_msg}")
+        log_event(
+            guild_id, LogLevel.WARNING, f"Invalid daily-report interaction: {error_msg}"
+        )
         await interaction.response.send_message(content=error_msg, ephemeral=True)
         return
 
     try:
-        log_event(guild_id, LogLevel.INFO, f"User {interaction.user} triggered /daily-report")
+        log_event(
+            guild_id, LogLevel.INFO, f"User {interaction.user} triggered /daily-report"
+        )
         await interaction.response.defer(ephemeral=False)
-        report_text = await asyncio.to_thread(lambda: generate_daily_report(get_worksheet()))
+        report_text = await asyncio.to_thread(
+            lambda: generate_daily_report(get_worksheet())
+        )
         await send_report_response(interaction, report_text)
-    except Exception as e:
-        log_event(guild_id, LogLevel.ERROR, f"Daily report generation failed: {e}", exc=e)
-        error_msg = f"❌ **Report generation failed**\n\n`{str(e)}`"
+    except (
+        discord.HTTPException,
+        discord.app_commands.AppCommandError,
+        discord.DiscordException,
+    ) as exc:
+        log_event(
+            guild_id, LogLevel.ERROR, f"Daily report generation failed: {exc}", exc=exc
+        )
+        error_msg = f"❌ **Report generation failed**\n\n`{exc!s}`"
         await interaction.followup.send(content=error_msg, ephemeral=True)

@@ -1,7 +1,6 @@
 """
 Global worksheet schema and utility constants for FB Report Bot.
 """
-import os
 
 # Google Sheet Controls
 TRIGGER_CELL = "B2"

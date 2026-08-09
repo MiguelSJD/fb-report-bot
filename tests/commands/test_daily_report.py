@@ -2,15 +2,16 @@
 Unit tests for daily report generation logic.
 """
 
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
-from datetime import datetime
+
 from commands.daily_report import generate_daily_report
 from utils.constants import DATE_FORMAT
 
 
 def test_generate_daily_report_valid_data():
     """Test generating a report with valid current date data."""
-    today = datetime.now().strftime(DATE_FORMAT)
+    today = datetime.now(timezone.utc).strftime(DATE_FORMAT)
 
     mock_values = [
         [],
@@ -33,10 +34,12 @@ def test_generate_daily_report_valid_data():
 
 def test_generate_daily_report_corrupted_data():
     """Test handling of rows with missing fields or invalid vote formats."""
-    today = datetime.now().strftime(DATE_FORMAT)
+    today = datetime.now(timezone.utc).strftime(DATE_FORMAT)
 
     mock_values = [
-        [], [], [],
+        [],
+        [],
+        [],
         [today, "", "InvalidTopicNoDelimiter", "", "", "", "100"],
     ]
 

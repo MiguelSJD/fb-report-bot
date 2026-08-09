@@ -1,6 +1,7 @@
 """
 Application runtime settings loaded from environment variables.
 """
+
 import os
 from pathlib import Path
 
