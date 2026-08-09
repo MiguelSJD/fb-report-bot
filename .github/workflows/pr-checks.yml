@@ -23,7 +23,7 @@ jobs:
             const botCommentIdentifier = '<!-- pr-status-check-comment -->';
 
             // 1. Check Title & Description
-            const titleRegex = /^(feat|refactor|fix|remove)\([a-zA-Z0-9_\-.]+\):\s+.+$/;
+            const titleRegex = /^(feat|refactor|fix|remove|build)\([a-zA-Z0-9_\-.]+\):\s+.+$/;
             const requiredSections = ['## Summary', '## Key Changes', '## How to Test'];
             
             const errors = [];
