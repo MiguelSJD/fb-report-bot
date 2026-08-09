@@ -80,5 +80,4 @@ def sanitize_markdown(text: str) -> str:
     """Strip raw Markdown formatting syntax that could break Discord message structure."""
     if not text:
         return ""
-    # Remove bold, italic, underline, and strikethrough characters
     return text.replace("**", "").replace("__", "").replace("*", "").replace("~~", "").strip()
