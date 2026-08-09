@@ -1,13 +1,12 @@
-<div style="text-align: center;">
+<div align="center">
 
 # 📊 FB Report Bot
 
 **Automated community feedback reporting for Discord, powered by Google Sheets and Google Gemini.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Discord.py](https://img.shields.io/badge/discord.py-v2.0%2B-5865F2.svg)](https://github.com/Rapptz/discord.py)
+[![CI](https://github.com/MiguelSJD/fb-report-bot/actions/workflows/unit-tests.yml/badge.svg?branch=main)](https://github.com/MiguelSJD/fb-report-bot/actions/workflows/unit-tests.yml)
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED.svg)](https://www.docker.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 </div>
 
