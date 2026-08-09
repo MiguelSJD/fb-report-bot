@@ -5,11 +5,15 @@ on:
     types:
       - opened
       - synchronize
+      - labeled
 
 jobs:
   ruff-annotations:
     name: "code-quality"
     runs-on: ubuntu-latest
+    if: |
+      github.event.action != 'labeled' || 
+      github.event.label.name == 'ci:code-quality'
     permissions:
       contents: read
       pull-requests: write
