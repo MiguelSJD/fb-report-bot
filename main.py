@@ -2,9 +2,11 @@
 """
 FB Report Bot — Core Application Bootstrapper
 """
+
+import asyncio
 import os
 import sys
-import asyncio
+
 import discord
 from discord.ext import commands
 
@@ -16,8 +18,10 @@ from models.log_level import LogLevel
 from utils.logger import log_event
 
 if not DISCORD_TOKEN:
-    log_event(None, LogLevel.CRITICAL, "DISCORD_TOKEN is missing from environment file.")
-    raise EnvironmentError("DISCORD_TOKEN is missing from .env file.")
+    log_event(
+        None, LogLevel.CRITICAL, "DISCORD_TOKEN is missing from environment file."
+    )
+    raise OSError("DISCORD_TOKEN is missing from .env file.")
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -38,14 +42,26 @@ async def main():
                         extension = os.path.splitext(rel_path)[0].replace(os.sep, ".")
 
                         await bot.load_extension(extension)
-                        log_event(None, LogLevel.INFO, f"Successfully loaded extension: {extension}")
+                        log_event(
+                            None,
+                            LogLevel.INFO,
+                            f"Successfully loaded extension: {extension}",
+                        )
         else:
-            log_event(None, LogLevel.WARNING, "'cogs' directory not found. Skipping extension loading.")
+            log_event(
+                None,
+                LogLevel.WARNING,
+                "'cogs' directory not found. Skipping extension loading.",
+            )
 
         await bot.start(DISCORD_TOKEN)
     except KeyboardInterrupt:
-        log_event(None, LogLevel.INFO, "Shutdown signal received (KeyboardInterrupt). Exiting gracefully.")
-    except Exception as exc:
+        log_event(
+            None,
+            LogLevel.INFO,
+            "Shutdown signal received (KeyboardInterrupt). Exiting gracefully.",
+        )
+    except (discord.DiscordException, OSError, RuntimeError) as exc:
         log_event(None, LogLevel.CRITICAL, f"Fatal process error: {exc}", exc=exc)
         sys.exit(1)
 
@@ -53,6 +69,11 @@ async def main():
 if __name__ == "__main__":
     try:
         asyncio.run(main())
-    except Exception as exc:
-        log_event(None, LogLevel.CRITICAL, f"Uncaught fatal error in event loop: {exc}", exc=exc)
+    except (discord.DiscordException, OSError, RuntimeError) as exc:
+        log_event(
+            None,
+            LogLevel.CRITICAL,
+            f"Uncaught fatal error in event loop: {exc}",
+            exc=exc,
+        )
         sys.exit(1)

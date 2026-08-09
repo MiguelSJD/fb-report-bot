@@ -76,8 +76,15 @@ def split_message_smartly(text: str, max_limit: int = 1900) -> list[str]:
 
     return chunks
 
+
 def sanitize_markdown(text: str) -> str:
     """Strip raw Markdown formatting syntax that could break Discord message structure."""
     if not text:
         return ""
-    return text.replace("**", "").replace("__", "").replace("*", "").replace("~~", "").strip()
+    return (
+        text.replace("**", "")
+        .replace("__", "")
+        .replace("*", "")
+        .replace("~~", "")
+        .strip()
+    )

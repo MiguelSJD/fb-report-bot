@@ -1,0 +1,25 @@
+name: "CI"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  status-unit-tests:
+    name: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run Unit Tests in Docker Sandbox
+        run: |
+          docker run --rm \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            -e PIP_ROOT_USER_ACTION=ignore \
+            -e DATA_ROOT=/tmp/data \
+            -v "$(pwd):/app" -w /app \
+            python:3.11-slim \
+            sh -c "pip install --quiet -r requirements-dev.txt && pytest -p no:cacheprovider"
