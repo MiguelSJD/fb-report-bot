@@ -1,0 +1,13 @@
+name: fb-report-bot
+
+services:
+  fb-report-bot:
+    build: .
+    image: fb-report-bot:latest
+    container_name: fb-report-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./credentials.json:/app/credentials.json:ro
+      - ~/.fb-report-bot:/app/data

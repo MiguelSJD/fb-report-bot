@@ -3,11 +3,16 @@ Mid-week report generator module for FB Report Bot.
 """
 
 import time
+import asyncio
+import discord
+from dataclasses import dataclass
 from collections import OrderedDict
 from datetime import datetime, timedelta
+
 from utils.constants import (
     TRIGGER_CELL,
     SHEET_UPDATE_DELAY,
+    DATE_FORMAT,
     COL_DATE,
     COL_TOPIC,
     COL_OBSERVATION,
@@ -16,10 +21,23 @@ from utils.constants import (
     COL_VOTES,
 )
 from utils.formatting import get_clean_val, capitalize_text, get_unique_non_empty, sanitize_markdown
+from utils.google_sheets import get_worksheet
+from utils.discord import send_report_response, validate_interaction
+from models.log_level import LogLevel
+from utils.logger import log_event
 
-LOOKBACK_DAYS_VALUE = "2"
-START_ROW_IDX = 3
-END_ROW_IDX = 8
+
+@dataclass(frozen=True)
+class MidWeekReportConfig:
+    lookback_days_trigger: str = "2"
+    lookback_days_delta: int = 2
+    start_row_idx: int = 3
+    end_row_idx: int = 8
+    topic_split_max: int = 1
+    rank_start_index: int = 1
+
+
+CONFIG = MidWeekReportConfig()
 
 
 def _build_category_detail_message(position: int, category: str, items: list[dict]) -> str:
@@ -50,24 +68,24 @@ def _build_category_detail_message(position: int, category: str, items: list[dic
 
 
 def generate_mid_week_report(worksheet) -> list[str]:
-    """Generate a mid-week report spanning 2 days prior up to current day."""
+    """Generate a mid-week report spanning configured lookback days prior up to current day."""
     try:
-        worksheet.update_acell(TRIGGER_CELL, LOOKBACK_DAYS_VALUE)
+        worksheet.update_acell(TRIGGER_CELL, CONFIG.lookback_days_trigger)
         time.sleep(SHEET_UPDATE_DELAY)
     except Exception as exc:
-        print(f"Warning: Failed to update cell {TRIGGER_CELL}: {exc}")
+        log_event(None, LogLevel.WARNING, f"Failed to update trigger cell {TRIGGER_CELL}: {exc}", exc=exc)
 
     all_values = worksheet.get_all_values()
 
     now = datetime.now()
-    start_date = (now - timedelta(days=2)).strftime("%d/%m/%Y")
-    end_date = now.strftime("%d/%m/%Y")
+    start_date = (now - timedelta(days=CONFIG.lookback_days_delta)).strftime(DATE_FORMAT)
+    end_date = now.strftime(DATE_FORMAT)
 
     grouped_categories = OrderedDict()
     data_issues = []
     all_rows_empty = True
 
-    for row_idx in range(START_ROW_IDX, END_ROW_IDX):
+    for row_idx in range(CONFIG.start_row_idx, CONFIG.end_row_idx):
         sheet_row_num = row_idx + 1
         date_val = get_clean_val(all_values, row_idx, COL_DATE)
         topic_raw = get_clean_val(all_values, row_idx, COL_TOPIC)
@@ -103,7 +121,7 @@ def generate_mid_week_report(worksheet) -> list[str]:
             data_issues.append(f"- **Row {sheet_row_num}**: Corrupted or incomplete data ({', '.join(row_issues)}).")
             continue
 
-        topic_parts = topic_raw.split("=", 1)
+        topic_parts = topic_raw.split("=", CONFIG.topic_split_max)
         category = capitalize_text(topic_parts[0])
         subcategory = capitalize_text(topic_parts[1])
 
@@ -152,8 +170,31 @@ def generate_mid_week_report(worksheet) -> list[str]:
         reverse=True,
     )
 
-    for position, (category, items) in enumerate(sorted_categories, start=1):
+    for position, (category, items) in enumerate(sorted_categories, start=CONFIG.rank_start_index):
         message = _build_category_detail_message(position, category, items)
         messages.append(message)
 
     return messages
+
+
+async def handle_mid_week_report(interaction: discord.Interaction):
+    """Handle the mid-week-report slash command logic."""
+    guild_id = interaction.guild_id if interaction.guild else None
+    is_valid, error_msg = validate_interaction(interaction)
+    if not is_valid:
+        log_event(guild_id, LogLevel.WARNING, f"Invalid mid-week-report interaction: {error_msg}")
+        await interaction.response.send_message(content=error_msg, ephemeral=True)
+        return
+
+    try:
+        log_event(guild_id, LogLevel.INFO, f"User {interaction.user} triggered /mid-week-report")
+        await interaction.response.defer(ephemeral=False)
+        report_messages = await asyncio.to_thread(lambda: generate_mid_week_report(get_worksheet()))
+        await send_report_response(interaction, report_messages)
+    except Exception as e:
+        log_event(guild_id, LogLevel.ERROR, f"Mid-week report generation failed: {e}", exc=e)
+        error_msg = f"❌ **Report generation failed**\n\n`{str(e)}`"
+        if interaction.response.is_done():
+            await interaction.followup.send(content=error_msg, ephemeral=True)
+        else:
+            await interaction.response.send_message(content=error_msg, ephemeral=True)
