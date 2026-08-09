@@ -1,0 +1,29 @@
+name: "ci/code-quality"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  ruff-annotations:
+    name: "status code quality"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run Ruff with GitHub Annotations
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "check --output-format=github"

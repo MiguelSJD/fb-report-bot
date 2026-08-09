@@ -1,0 +1,73 @@
+name: "ci/pr-checks"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+permissions:
+  pull-requests: write
+
+jobs:
+  status-check-pr:
+    name: status check pr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR Title and Description
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prTitle = context.payload.pull_request.title;
+            const prBody = context.payload.pull_request.body || '';
+            const botCommentIdentifier = '<!-- pr-status-check-comment -->';
+
+            // 1. Check Title & Description
+            const titleRegex = /^(feat|refactor|fix|remove)\([a-zA-Z0-9_\-.]+\):\s+.+$/;
+            const requiredSections = ['## Summary', '## Key Changes', '## How to Test'];
+            
+            const errors = [];
+
+            if (!titleRegex.test(prTitle)) {
+              errors.push(`- **Invalid Title**: "${prTitle}". Must follow \`type(scope): description\` (Allowed: \`feat\`, \`refactor\`, \`fix\`, \`remove\`).`);
+            }
+
+            const missingSections = requiredSections.filter(section => !prBody.includes(section));
+            if (missingSections.length > 0) {
+              errors.push(`- **Missing Description Sections**: ${missingSections.map(s => `\`${s}\``).join(', ')}.`);
+            }
+
+            // 2. Handle github actions message
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+
+            const workflowComments = comments.filter(comment => 
+              comment.user.login === 'github-actions[bot]' &&
+              comment.body && 
+              comment.body.includes(botCommentIdentifier)
+            );
+
+            for (const comment of workflowComments) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: comment.id,
+              });
+            }
+
+            if (errors.length > 0) {
+              const commentBody = `${botCommentIdentifier}\n### ❌ PR Validation Errors\n\nPlease fix the following issues to pass CI:\n\n${errors.join('\n')}`;
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: commentBody,
+              });
+
+              core.setFailed("PR validation failed. Please review the errors in the comment.");
+            }
