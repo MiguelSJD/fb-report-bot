@@ -17,13 +17,25 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Changed Python Files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            **.py
+          matrix: false
 
       - name: Set up Python
+        if: steps.changed-files.outputs.any_changed == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Run Ruff with GitHub Annotations
+      - name: Run Ruff on Changed Files
+        if: steps.changed-files.outputs.any_changed == 'true'
         uses: astral-sh/ruff-action@v3
         with:
-          args: "check --output-format=github"
+          args: "check --output-format=github ${{ steps.changed-files.outputs.all_changed_files }}"
