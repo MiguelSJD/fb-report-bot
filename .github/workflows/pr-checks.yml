@@ -5,39 +5,26 @@ on:
     types:
       - opened
       - edited
-
-permissions:
-  pull-requests: write
+      - synchronize
+      - labeled
 
 jobs:
   status-check-pr:
     name: pr-checks
     runs-on: ubuntu-latest
+    if: |
+      github.event.action != 'labeled' || 
+      github.event.label.name == 'ci:pr-checks'
+    permissions:
+      pull-requests: write
     steps:
       - name: Validate PR Title and Description
         uses: actions/github-script@v7
         with:
           script: |
-            const prTitle = context.payload.pull_request.title;
-            const prBody = context.payload.pull_request.body || '';
             const botCommentIdentifier = '<!-- pr-status-check-comment -->';
-
-            // 1. Check Title & Description
-            const titleRegex = /^(feat|refactor|fix|remove)\([a-zA-Z0-9_\-.]+\):\s+.+$/;
-            const requiredSections = ['## Summary', '## Key Changes', '## How to Test'];
             
-            const errors = [];
-
-            if (!titleRegex.test(prTitle)) {
-              errors.push(`- **Invalid Title**: "${prTitle}". Must follow \`type(scope): description\` (Allowed: \`feat\`, \`refactor\`, \`fix\`, \`remove\`).`);
-            }
-
-            const missingSections = requiredSections.filter(section => !prBody.includes(section));
-            if (missingSections.length > 0) {
-              errors.push(`- **Missing Description Sections**: ${missingSections.map(s => `\`${s}\``).join(', ')}.`);
-            }
-
-            // 2. Handle github actions message
+            // 1. CLEANUP FIRST: Always delete previous bot comments before anything else
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -56,6 +43,30 @@ jobs:
                 repo: context.repo.repo,
                 comment_id: comment.id,
               });
+            }
+
+            // 2. BYPASS DEPENDABOT (Use .includes in case it's 'dependabot' or 'dependabot[bot]')
+            if (context.payload.pull_request.user.login.includes('dependabot')) {
+              core.notice("Skipping PR validation for Dependabot.");
+              return; 
+            }
+
+            // 3. VALIDATION LOGIC
+            const prTitle = context.payload.pull_request.title;
+            const prBody = context.payload.pull_request.body || '';
+            
+            const titleRegex = /^(feat|refactor|fix|remove|build)\([a-zA-Z0-9_\-.]+\):\s+.+$/;
+            const requiredSections = ['## Summary', '## Key Changes', '## How to Test'];
+            
+            const errors = [];
+
+            if (!titleRegex.test(prTitle)) {
+              errors.push(`- **Invalid Title**: "${prTitle}". Must follow \`type(scope): description\` (Allowed: \`feat\`, \`refactor\`, \`fix\`, \`remove\`, \`build\`).`);
+            }
+
+            const missingSections = requiredSections.filter(section => !prBody.includes(section));
+            if (missingSections.length > 0) {
+              errors.push(`- **Missing Description Sections**: ${missingSections.map(s => '\`' + s + '\`').join(', ')}.`);
             }
 
             if (errors.length > 0) {
