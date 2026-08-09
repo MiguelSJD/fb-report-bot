@@ -5,14 +5,18 @@ on:
     types:
       - opened
       - edited
-
-permissions:
-  pull-requests: write
+      - synchronize
+      - labeled
 
 jobs:
   status-check-pr:
     name: pr-checks
     runs-on: ubuntu-latest
+    if: |
+      github.event.action != 'labeled' || 
+      github.event.label.name == 'ci:pr-checks'
+    permissions:
+      pull-requests: write
     steps:
       - name: Validate PR Title and Description
         uses: actions/github-script@v7
