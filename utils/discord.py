@@ -3,14 +3,30 @@ Discord interaction, authentication, and messaging helpers.
 """
 
 import asyncio
+import time
 
 import discord
+from gspread.exceptions import GSpreadException
 
 from config import ALLOWED_USER_IDS
 from models.log_level import LogLevel
-from utils.constants import DISCORD_RATE_LIMIT_DELAY
+from utils.constants import DISCORD_RATE_LIMIT_DELAY, SHEET_UPDATE_DELAY, TRIGGER_CELL
 from utils.formatting import split_message_smartly
 from utils.logger import log_event
+
+
+def trigger_sheet_update(worksheet, lookback_days: str) -> None:
+    """Updates the worksheet's trigger cell with lookback days and waits for backend processing."""
+    try:
+        worksheet.update_acell(TRIGGER_CELL, lookback_days)
+        time.sleep(SHEET_UPDATE_DELAY)
+    except GSpreadException as exc:
+        log_event(
+            None,
+            LogLevel.WARNING,
+            f"Failed to update trigger cell {TRIGGER_CELL}: {exc}",
+            exc=exc,
+        )
 
 
 async def send_report_response(
@@ -65,3 +81,23 @@ async def send_report_response(
             guild_id, LogLevel.ERROR, f"Error sending report response: {exc}", exc=exc
         )
         raise
+
+
+async def handle_report_error(
+    interaction: discord.Interaction,
+    exc: Exception,
+    guild_id: int | None,
+    log_message: str,
+) -> None:
+    """Logs report command exceptions and alerts the user with an ephemeral message."""
+    log_event(
+        guild_id,
+        LogLevel.ERROR,
+        f"{log_message}: {exc}",
+        exc=exc,
+    )
+    error_msg = f"❌ **Report generation failed**\n\n`{exc!s}`"
+    if interaction.response.is_done():
+        await interaction.followup.send(content=error_msg, ephemeral=True)
+    else:
+        await interaction.response.send_message(content=error_msg, ephemeral=True)
