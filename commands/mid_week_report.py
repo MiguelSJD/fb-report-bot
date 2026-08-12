@@ -4,9 +4,7 @@ Mid-week report generator module for FB Report Bot.
 
 import asyncio
 import time
-from collections import OrderedDict
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
 
 import discord
 from gspread.exceptions import GSpreadException
@@ -16,20 +14,15 @@ from utils.constants import (
     COL_CONSEQUENCE,
     COL_DATE,
     COL_OBSERVATION,
+    COL_SCREEN_SHOT_LINK,
     COL_SOLUTION,
     COL_TOPIC,
     COL_VOTES,
-    DATE_FORMAT,
     SHEET_UPDATE_DELAY,
     TRIGGER_CELL,
 )
-from utils.discord import send_report_response, validate_interaction
-from utils.formatting import (
-    capitalize_text,
-    get_clean_val,
-    get_unique_non_empty,
-    sanitize_markdown,
-)
+from utils.discord import send_report_response
+from utils.formatting import capitalize_text, get_clean_val, sanitize_markdown
 from utils.google_sheets import get_worksheet
 from utils.logger import log_event
 
@@ -37,43 +30,10 @@ from utils.logger import log_event
 @dataclass(frozen=True)
 class MidWeekReportConfig:
     lookback_days_trigger: str = "2"
-    lookback_days_delta: int = 2
     start_row_idx: int = 3
-    end_row_idx: int = 8
-    topic_split_max: int = 1
-    rank_start_index: int = 1
 
 
 CONFIG = MidWeekReportConfig()
-
-
-def _build_category_detail_message(
-    position: int, category: str, items: list[dict]
-) -> str:
-    """Formats a single category's detailed feedback into a formatted report block."""
-    total_category_votes = sum(item["votes"] for item in items)
-    lines = [f"—-———-—- **{position}. {category}** ———————--"]
-
-    for item in items:
-        lines.append(f"- {item['subcategory']} ({item['votes']} votes)")
-
-    lines.append(f"\nTotal votes ({total_category_votes} votes)\n")
-
-    lines.append("**Observation:**")
-    for obs in get_unique_non_empty(items, "observation"):
-        lines.append(f"- {obs}")
-    lines.append("")
-
-    lines.append("**Consequences:**")
-    for cons in get_unique_non_empty(items, "consequence"):
-        lines.append(f"- {cons}")
-    lines.append("")
-
-    lines.append("**Suggested Solutions:**")
-    for sol in get_unique_non_empty(items, "solution"):
-        lines.append(f"- {sol}")
-
-    return "\n".join(lines)
 
 
 def generate_mid_week_report(worksheet) -> list[str]:
@@ -91,114 +51,98 @@ def generate_mid_week_report(worksheet) -> list[str]:
 
     all_values = worksheet.get_all_values()
 
-    now = datetime.now(timezone.utc)
-    start_date = (now - timedelta(days=CONFIG.lookback_days_delta)).strftime(
-        DATE_FORMAT
-    )
-    end_date = now.strftime(DATE_FORMAT)
+    topics_dict = {}
+    seen_category_subcats = set()
+    row_idx = CONFIG.start_row_idx
 
-    grouped_categories = OrderedDict()
-    data_issues = []
-    all_rows_empty = True
-
-    for row_idx in range(CONFIG.start_row_idx, CONFIG.end_row_idx):
-        sheet_row_num = row_idx + 1
+    while True:
         date_val = get_clean_val(all_values, row_idx, COL_DATE)
+
+        if not date_val:
+            break
+
         topic_raw = get_clean_val(all_values, row_idx, COL_TOPIC)
         observation = get_clean_val(all_values, row_idx, COL_OBSERVATION)
         consequence = get_clean_val(all_values, row_idx, COL_CONSEQUENCE)
         solution = get_clean_val(all_values, row_idx, COL_SOLUTION)
         votes_raw = get_clean_val(all_values, row_idx, COL_VOTES)
+        screenshot_link = get_clean_val(all_values, row_idx, COL_SCREEN_SHOT_LINK)
 
-        is_empty_row = not date_val and not topic_raw and not votes_raw
-        if is_empty_row:
-            continue
-
-        all_rows_empty = False
-
-        row_issues = []
-        if not date_val:
-            row_issues.append("missing date")
-        if not topic_raw:
-            row_issues.append("missing topic")
-        elif "=" not in topic_raw:
-            row_issues.append("missing '=' delimiter in topic")
-        if not votes_raw:
-            row_issues.append("missing vote count")
-
-        vote_count = None
+        vote_count = 0
         if votes_raw:
             try:
                 vote_count = int(votes_raw.replace(",", ""))
             except ValueError:
-                row_issues.append(f"invalid vote format ('{votes_raw}')")
+                vote_count = 0
 
-        if row_issues:
-            data_issues.append(
-                f"- **Row {sheet_row_num}**: Corrupted or incomplete data ({', '.join(row_issues)})."
-            )
+        category_raw, _, subcategory_raw = topic_raw.partition("=")
+        category = capitalize_text(category_raw)
+        subcategory = capitalize_text(subcategory_raw)
+
+        if (category, subcategory) in seen_category_subcats:
+            row_idx += 1
             continue
 
-        topic_parts = topic_raw.split("=", CONFIG.topic_split_max)
-        category = capitalize_text(topic_parts[0])
-        subcategory = capitalize_text(topic_parts[1])
+        seen_category_subcats.add((category, subcategory))
 
-        if category not in grouped_categories:
-            grouped_categories[category] = []
+        obs_sanitized = sanitize_markdown(observation)
+        topic_key = (category, obs_sanitized)
 
-        grouped_categories[category].append(
-            {
-                "subcategory": sanitize_markdown(subcategory),
-                "votes": vote_count,
-                "observation": sanitize_markdown(observation),
+        if topic_key in topics_dict:
+            if subcategory:
+                topics_dict[topic_key]["subcategories"].append(subcategory)
+            if screenshot_link:
+                topics_dict[topic_key]["screenshots"].append(screenshot_link)
+            topics_dict[topic_key]["votes"] += vote_count
+
+        else:
+            if len(topics_dict) >= 5:
+                row_idx += 1
+                continue
+
+            topics_dict[topic_key] = {
+                "category": category,
+                "subcategories": [subcategory] if subcategory else [],
+                "observation": obs_sanitized,
                 "consequence": sanitize_markdown(consequence),
                 "solution": sanitize_markdown(solution),
+                "votes": vote_count,
+                "screenshots": [screenshot_link] if screenshot_link else [],
             }
-        )
 
-    if all_rows_empty:
+        row_idx += 1
+
+    if not topics_dict:
         return ["No valid reports"]
 
-    summary_lines = [
-        "# 📈 Mid-Week Feedback Report",
-        f"**Period:** `{start_date}` to `{end_date}`\n",
-        "---",
-    ]
+    messages = []
+    for rank, data in enumerate(topics_dict.values(), start=1):
+        subcategories_text = "\n".join(
+            f"- {sub}" for sub in data["subcategories"] if sub
+        )
+        desc_block = (
+            f"**Description:**\n{subcategories_text}\n"
+            if subcategories_text
+            else "**Description:**\n"
+        )
 
-    if not grouped_categories:
-        summary_lines.append("*No valid entries found.*")
-    else:
-        for category, items in grouped_categories.items():
-            total_category_votes = sum(item["votes"] for item in items)
-            summary_lines.append(
-                f"\n### 📁 {category} (`{total_category_votes}` total votes)"
-            )
-            for item in items:
-                summary_lines.append(
-                    f"• **{item['subcategory']}** — `{item['votes']}` votes"
-                )
+        message_content = (
+            f"# **---  {rank}. Topic: {data['category']}  ---**\n"
+            f"Sum Votes = {data['votes']}\n\n"
+            f"{desc_block}\n"
+            f"**Observation:**\n"
+            f"{data['observation']}\n\n"
+            f"**Consequence:**\n"
+            f"{data['consequence']}\n\n"
+            f"**Suggested Solution:**\n"
+            f"{data['solution']}"
+        )
 
-    if data_issues:
-        summary_lines.append("\n---")
-        summary_lines.append("### ⚠️ Observations")
-        summary_lines.extend(data_issues)
+        if data["screenshots"]:
+            screenshots_text = "\n".join(data["screenshots"])
+            message_content += f"\n\n**Screenshots:**\n{screenshots_text}"
 
-    messages = ["\n".join(summary_lines)]
-
-    if not grouped_categories:
-        return messages
-
-    sorted_categories = sorted(
-        grouped_categories.items(),
-        key=lambda entry: sum(item["votes"] for item in entry[1]),
-        reverse=True,
-    )
-
-    for position, (category, items) in enumerate(
-        sorted_categories, start=CONFIG.rank_start_index
-    ):
-        message = _build_category_detail_message(position, category, items)
-        messages.append(message)
+        messages.append(message_content)
 
     return messages
 
@@ -206,15 +150,6 @@ def generate_mid_week_report(worksheet) -> list[str]:
 async def handle_mid_week_report(interaction: discord.Interaction):
     """Handle the mid-week-report slash command logic."""
     guild_id = interaction.guild_id if interaction.guild else None
-    is_valid, error_msg = validate_interaction(interaction)
-    if not is_valid:
-        log_event(
-            guild_id,
-            LogLevel.WARNING,
-            f"Invalid mid-week-report interaction: {error_msg}",
-        )
-        await interaction.response.send_message(content=error_msg, ephemeral=True)
-        return
 
     try:
         log_event(
