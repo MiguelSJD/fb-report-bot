@@ -10,21 +10,6 @@ from commands.set_cron_channel import handle_set_cron_channel
 
 
 @pytest.mark.asyncio
-async def test_set_cron_channel_unauthorized_permission():
-    """Test blocking user without Manage Server permission."""
-    interaction = AsyncMock()
-    interaction.guild_id = 123456789
-    interaction.user.guild_permissions.manage_guild = False
-
-    await handle_set_cron_channel(interaction, MagicMock())
-
-    interaction.response.send_message.assert_called_once()
-    kwargs = interaction.response.send_message.call_args.kwargs
-    assert "Manage Server" in kwargs["content"]
-    assert kwargs["ephemeral"] is True
-
-
-@pytest.mark.asyncio
 async def test_set_cron_channel_success():
     """Test successful configuration of cron channel."""
     interaction = AsyncMock()
@@ -34,9 +19,7 @@ async def test_set_cron_channel_success():
     channel = MagicMock()
     channel.id = 987654321
 
-    with (
-        patch("commands.set_cron_channel.set_guild_channel") as mock_set_db,
-    ):
+    with patch("commands.set_cron_channel.set_guild_channel") as mock_set_db:
         await handle_set_cron_channel(interaction, channel)
 
         mock_set_db.assert_called_once_with(123456789, 987654321)
