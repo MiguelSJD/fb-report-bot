@@ -119,9 +119,7 @@ def format_topic_report_card(
     screenshots: list[str],
 ) -> str:
     """Formats a full topic card block used by mid-week and weekly reports."""
-    subcategories_text = "\n".join(
-        f"- {sub}" for sub in subcategories if sub
-    )
+    subcategories_text = "\n".join(f"- {sub}" for sub in subcategories if sub)
     desc_block = (
         f"**Description:**\n{subcategories_text}\n"
         if subcategories_text

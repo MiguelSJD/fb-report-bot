@@ -8,7 +8,6 @@ import time
 import discord
 from gspread.exceptions import GSpreadException
 
-from config import ALLOWED_USER_IDS
 from models.log_level import LogLevel
 from utils.constants import DISCORD_RATE_LIMIT_DELAY, SHEET_UPDATE_DELAY, TRIGGER_CELL
 from utils.formatting import split_message_smartly

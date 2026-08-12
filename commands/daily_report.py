@@ -99,11 +99,7 @@ def generate_daily_report(worksheet) -> str:
     if all_rows_empty:
         return "No valid reports"
 
-    header_block = (
-        f"# 📊 Daily Feedback Report\n"
-        f"**Date:** `{current_date}`\n\n"
-        f"---"
-    )
+    header_block = f"# 📊 Daily Feedback Report\n**Date:** `{current_date}`\n\n---"
 
     if not grouped_categories:
         categories_block = "*No valid entries found meeting the criteria.*"
