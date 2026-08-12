@@ -16,10 +16,7 @@ async def test_set_cron_channel_unauthorized_permission():
     interaction.guild_id = 123456789
     interaction.user.guild_permissions.manage_guild = False
 
-    with patch(
-        "commands.set_cron_channel.validate_interaction", return_value=(True, "")
-    ):
-        await handle_set_cron_channel(interaction, MagicMock())
+    await handle_set_cron_channel(interaction, MagicMock())
 
     interaction.response.send_message.assert_called_once()
     kwargs = interaction.response.send_message.call_args.kwargs
@@ -38,9 +35,6 @@ async def test_set_cron_channel_success():
     channel.id = 987654321
 
     with (
-        patch(
-            "commands.set_cron_channel.validate_interaction", return_value=(True, "")
-        ),
         patch("commands.set_cron_channel.set_guild_channel") as mock_set_db,
     ):
         await handle_set_cron_channel(interaction, channel)
