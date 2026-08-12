@@ -27,6 +27,7 @@ class ReportCommandsCog(commands.Cog):
         name="mid-week-report", description="Generate mid-week report (non-empty days)"
     )
     @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
     async def mid_week_report(self, interaction: discord.Interaction):
         """Generates a mid-week report across multiple messages."""
         await handle_mid_week_report(interaction)
