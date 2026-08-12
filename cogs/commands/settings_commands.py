@@ -18,6 +18,7 @@ class SettingsCommandsCog(commands.Cog):
         name="set-cron-channel", description="Set the channel for cron reports"
     )
     @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
     async def set_cron_channel(
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ):
@@ -28,6 +29,7 @@ class SettingsCommandsCog(commands.Cog):
         name="remove-cron-channel", description="Remove the cron report channel setting"
     )
     @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
     async def remove_cron_channel(self, interaction: discord.Interaction):
         """Remove the cron report channel setting for this server."""
         await handle_remove_cron_channel(interaction)

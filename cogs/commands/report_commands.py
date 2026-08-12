@@ -19,6 +19,7 @@ class ReportCommandsCog(commands.Cog):
         name="daily-report", description="Generate today's report for votes >= 50"
     )
     @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
     async def daily_report(self, interaction: discord.Interaction):
         """Generates a daily report for the current date."""
         await handle_daily_report(interaction)
@@ -27,6 +28,7 @@ class ReportCommandsCog(commands.Cog):
         name="mid-week-report", description="Generate mid-week report (non-empty days)"
     )
     @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
     async def mid_week_report(self, interaction: discord.Interaction):
         """Generates a mid-week report across multiple messages."""
         await handle_mid_week_report(interaction)
@@ -36,6 +38,7 @@ class ReportCommandsCog(commands.Cog):
         description="Generate top 10 weekly feedback report",
     )
     @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
     async def weekly_report_top_10(self, interaction: discord.Interaction):
         """Generates a weekly top 10 feedback report across multiple messages."""
         await handle_weekly_report_top_10(interaction)

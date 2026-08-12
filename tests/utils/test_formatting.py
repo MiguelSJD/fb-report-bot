@@ -41,7 +41,7 @@ def test_get_unique_non_empty():
 
 def test_sanitize_markdown():
     raw_text = "**Bold** and *Italic* and ~~Strikethrough~~"
-    assert sanitize_markdown(raw_text) == "Bold and Italic and Strikethrough"
+    assert sanitize_markdown(raw_text) == "\\*\\*Bold\\*\\* and \\*Italic\\* and \\~\\~Strikethrough\\~\\~"
 
 
 def test_split_message_smartly_under_limit():

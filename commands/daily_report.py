@@ -3,25 +3,24 @@ Daily report generator module for FB Report Bot.
 """
 
 import asyncio
-import time
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import discord
-from gspread.exceptions import GSpreadException
 
 from models.log_level import LogLevel
-from utils.constants import (
-    COL_DATE,
-    COL_TOPIC,
-    COL_VOTES,
-    DATE_FORMAT,
-    SHEET_UPDATE_DELAY,
-    TRIGGER_CELL,
+from utils.constants import COL_DATE, COL_TOPIC, COL_VOTES, DATE_FORMAT
+from utils.discord import (
+    handle_report_error,
+    send_report_response,
+    trigger_sheet_update,
 )
-from utils.discord import send_report_response, validate_interaction
-from utils.formatting import capitalize_text, get_clean_val
+from utils.formatting import (
+    get_clean_val,
+    parse_topic_string,
+    parse_vote_count,
+)
 from utils.google_sheets import get_worksheet
 from utils.logger import log_event
 
@@ -30,9 +29,7 @@ from utils.logger import log_event
 class DailyReportConfig:
     lookback_days_trigger: str = "1"
     start_row_idx: int = 3
-    end_row_idx: int = 8
     min_vote_threshold: int = 50
-    topic_split_max: int = 1
 
 
 CONFIG = DailyReportConfig()
@@ -40,16 +37,7 @@ CONFIG = DailyReportConfig()
 
 def generate_daily_report(worksheet) -> str:
     """Generate a daily report from the configured worksheet rows."""
-    try:
-        worksheet.update_acell(TRIGGER_CELL, CONFIG.lookback_days_trigger)
-        time.sleep(SHEET_UPDATE_DELAY)
-    except GSpreadException as exc:
-        log_event(
-            None,
-            LogLevel.WARNING,
-            f"Failed to update trigger cell {TRIGGER_CELL}: {exc}",
-            exc=exc,
-        )
+    trigger_sheet_update(worksheet, CONFIG.lookback_days_trigger)
 
     all_values = worksheet.get_all_values()
     current_date = datetime.now(timezone.utc).strftime(DATE_FORMAT)
@@ -57,94 +45,88 @@ def generate_daily_report(worksheet) -> str:
     grouped_categories = OrderedDict()
     data_issues = []
     all_rows_empty = True
+    row_idx = CONFIG.start_row_idx
 
-    for row_idx in range(CONFIG.start_row_idx, CONFIG.end_row_idx):
+    while True:
         sheet_row_num = row_idx + 1
         row_date = get_clean_val(all_values, row_idx, COL_DATE)
+
+        if not row_date:
+            break
+
         topic_raw = get_clean_val(all_values, row_idx, COL_TOPIC)
         votes_raw = get_clean_val(all_values, row_idx, COL_VOTES)
-
-        is_empty_row = not row_date and not topic_raw and not votes_raw
-        if is_empty_row:
-            continue
 
         all_rows_empty = False
 
         if row_date != current_date:
+            row_idx += 1
             continue
 
         row_issues = []
-        if not row_date:
-            row_issues.append("missing date")
         if not topic_raw:
             row_issues.append("missing topic")
-        elif "=" not in topic_raw:
-            row_issues.append("missing '=' delimiter in topic")
         if not votes_raw:
             row_issues.append("missing vote count")
 
-        vote_count = None
-        if votes_raw:
-            try:
-                vote_count = int(votes_raw.replace(",", ""))
-            except ValueError:
-                row_issues.append(f"invalid vote format ('{votes_raw}')")
+        vote_count = parse_vote_count(votes_raw)
+        if votes_raw and vote_count == 0 and votes_raw != "0":
+            row_issues.append(f"invalid vote format ('{votes_raw}')")
 
         if row_issues:
             data_issues.append(
                 f"- **Row {sheet_row_num}**: Corrupted or incomplete data ({', '.join(row_issues)})."
             )
+            row_idx += 1
             continue
 
         if vote_count < CONFIG.min_vote_threshold:
+            row_idx += 1
             continue
 
-        category_raw, subcategory_raw = topic_raw.split("=", CONFIG.topic_split_max)
-        category = capitalize_text(category_raw)
-        subcategory = capitalize_text(subcategory_raw)
+        category, subcategory = parse_topic_string(topic_raw)
 
-        if category not in grouped_categories:
-            grouped_categories[category] = []
-        grouped_categories[category].append((subcategory, vote_count))
+        if category in grouped_categories:
+            grouped_categories[category].append((subcategory, vote_count))
+        else:
+            if len(grouped_categories) >= 5:
+                row_idx += 1
+                continue
+            grouped_categories[category] = [(subcategory, vote_count)]
+
+        row_idx += 1
 
     if all_rows_empty:
         return "No valid reports"
 
-    report_lines = [
-        "# 📊 Daily Feedback Report",
-        f"**Date:** `{current_date}`\n",
-        "---",
-    ]
+    header_block = f"# 📊 Daily Feedback Report\n**Date:** `{current_date}`\n\n---"
 
     if not grouped_categories:
-        report_lines.append("*No valid entries found meeting the criteria.*")
+        categories_block = "*No valid entries found meeting the criteria.*"
     else:
+        category_sections = []
         for category, subcategories in grouped_categories.items():
             total_category_votes = sum(votes for _, votes in subcategories)
-            report_lines.append(
-                f"\n### 📁 {category} (`{total_category_votes}` total votes)"
+            subcategories_text = "\n".join(
+                f"• **{sub}** — `{votes}` votes" for sub, votes in subcategories
             )
-            for subcategory, votes in subcategories:
-                report_lines.append(f"• **{subcategory}** — `{votes}` votes")
+            category_sections.append(
+                f"### 📁 {category} (`{total_category_votes}` total votes)\n"
+                f"{subcategories_text}"
+            )
+        categories_block = "\n\n".join(category_sections)
 
+    observations_block = ""
     if data_issues:
-        report_lines.append("\n---")
-        report_lines.append("### ⚠️ Observations")
-        report_lines.extend(data_issues)
+        issues_text = "\n".join(data_issues)
+        observations_block = f"\n\n---\n### ⚠️ Observations\n{issues_text}"
 
-    return "\n".join(report_lines)
+    return f"{header_block}\n\n{categories_block}{observations_block}"
 
 
 async def handle_daily_report(interaction: discord.Interaction):
     """Handle the daily-report slash command logic."""
     guild_id = interaction.guild_id if interaction.guild else None
-    is_valid, error_msg = validate_interaction(interaction)
-    if not is_valid:
-        log_event(
-            guild_id, LogLevel.WARNING, f"Invalid daily-report interaction: {error_msg}"
-        )
-        await interaction.response.send_message(content=error_msg, ephemeral=True)
-        return
 
     try:
         log_event(
@@ -160,8 +142,6 @@ async def handle_daily_report(interaction: discord.Interaction):
         discord.app_commands.AppCommandError,
         discord.DiscordException,
     ) as exc:
-        log_event(
-            guild_id, LogLevel.ERROR, f"Daily report generation failed: {exc}", exc=exc
+        await handle_report_error(
+            interaction, exc, guild_id, "Daily report generation failed"
         )
-        error_msg = f"❌ **Report generation failed**\n\n`{exc!s}`"
-        await interaction.followup.send(content=error_msg, ephemeral=True)

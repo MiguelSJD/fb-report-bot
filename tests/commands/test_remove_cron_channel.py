@@ -17,9 +17,6 @@ async def test_remove_cron_channel_success():
     interaction.user.guild_permissions.manage_guild = True
 
     with (
-        patch(
-            "commands.remove_cron_channel.validate_interaction", return_value=(True, "")
-        ),
         patch("commands.remove_cron_channel.remove_guild_channel", return_value=True),
     ):
         await handle_remove_cron_channel(interaction)
@@ -39,9 +36,6 @@ async def test_remove_cron_channel_not_found():
     interaction.user.guild_permissions.manage_guild = True
 
     with (
-        patch(
-            "commands.remove_cron_channel.validate_interaction", return_value=(True, "")
-        ),
         patch("commands.remove_cron_channel.remove_guild_channel", return_value=False),
     ):
         await handle_remove_cron_channel(interaction)

@@ -2,6 +2,8 @@
 Shared string formatting and data extraction utilities for FB Report Bot.
 """
 
+import re
+
 
 def get_clean_val(rows: list, row_idx: int, col_idx: int) -> str | None:
     """Safely extract and strip a value from a pre-fetched 2D array of sheet values."""
@@ -78,13 +80,62 @@ def split_message_smartly(text: str, max_limit: int = 1900) -> list[str]:
 
 
 def sanitize_markdown(text: str) -> str:
-    """Strip raw Markdown formatting syntax that could break Discord message structure."""
+    """Escape raw Markdown formatting syntax so Discord renders it as plain text."""
     if not text:
         return ""
-    return (
-        text.replace("**", "")
-        .replace("__", "")
-        .replace("*", "")
-        .replace("~~", "")
-        .strip()
+    return re.sub(r"([*_`~\\])", r"\\\1", text.strip())
+
+
+def parse_topic_string(topic_raw: str) -> tuple[str, str]:
+    """Safely splits a topic string into capitalized category and subcategory without leading/trailing spaces."""
+    category_raw, _, subcategory_raw = topic_raw.partition("=")
+    category = capitalize_text(category_raw.strip())
+    subcategory = capitalize_text(subcategory_raw.strip())
+    return category, subcategory
+
+
+def parse_vote_count(votes_raw: str) -> int:
+    """Safely parses comma-separated string vote counts into integers."""
+    if not votes_raw:
+        return 0
+    try:
+        return int(votes_raw.replace(",", ""))
+    except ValueError:
+        return 0
+
+
+def format_topic_report_card(
+    rank: int,
+    category: str,
+    votes_str: str,
+    subcategories: list[str],
+    observation: str,
+    consequence: str,
+    solution: str,
+    screenshots: list[str],
+) -> str:
+    """Formats a full topic card block used by mid-week and weekly reports."""
+    subcategories_text = "\n".join(f"- {sub}" for sub in subcategories if sub)
+    desc_block = (
+        f"**Description:**\n{subcategories_text}\n"
+        if subcategories_text
+        else "**Description:**\n"
     )
+
+    card = (
+        f"# **---  {rank}. Topic: {category}  ---**\n"
+        f"Sum Votes = {votes_str}\n\n"
+        f"{desc_block}\n"
+        f"**Observation:**\n"
+        f"{observation}\n\n"
+        f"**Consequence:**\n"
+        f"{consequence}\n\n"
+        f"**Suggested Solution:**\n"
+        f"{solution}"
+    )
+
+    if screenshots:
+        screenshots_text = "\n".join(screenshots)
+        card += f"\n\n**Screenshots:**\n{screenshots_text}"
+
+    return card

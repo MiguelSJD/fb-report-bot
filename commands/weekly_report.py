@@ -3,25 +3,30 @@ Weekly Top 10 report generator module for FB Report Bot.
 """
 
 import asyncio
-import time
 from dataclasses import dataclass
 
 import discord
-from gspread.exceptions import GSpreadException
 
 from models.log_level import LogLevel
 from utils.constants import (
     COL_CONSEQUENCE,
     COL_DATE,
     COL_OBSERVATION,
+    COL_SCREENSHOT_LINK,
     COL_SOLUTION,
     COL_TOPIC,
-    COL_VOTES,
-    SHEET_UPDATE_DELAY,
-    TRIGGER_CELL,
 )
-from utils.discord import send_report_response, validate_interaction
-from utils.formatting import capitalize_text, get_clean_val, sanitize_markdown
+from utils.discord import (
+    handle_report_error,
+    send_report_response,
+    trigger_sheet_update,
+)
+from utils.formatting import (
+    format_topic_report_card,
+    get_clean_val,
+    parse_topic_string,
+    sanitize_markdown,
+)
 from utils.google_sheets import get_worksheet
 from utils.logger import log_event
 
@@ -30,9 +35,6 @@ from utils.logger import log_event
 class WeeklyTop10ReportConfig:
     lookback_days_trigger: str = "6"
     start_row_idx: int = 3
-    end_row_idx: int = 13
-    topic_split_max: int = 1
-    rank_start_index: int = 1
 
 
 CONFIG = WeeklyTop10ReportConfig()
@@ -40,108 +42,78 @@ CONFIG = WeeklyTop10ReportConfig()
 
 def generate_weekly_top_10_report(worksheet) -> list[str]:
     """Generate a weekly top 10 report from configured worksheet rows."""
-    try:
-        worksheet.update_acell(TRIGGER_CELL, CONFIG.lookback_days_trigger)
-        time.sleep(SHEET_UPDATE_DELAY)
-    except GSpreadException as exc:
-        log_event(
-            None,
-            LogLevel.WARNING,
-            f"Failed to update trigger cell {TRIGGER_CELL}: {exc}",
-            exc=exc,
-        )
+    trigger_sheet_update(worksheet, CONFIG.lookback_days_trigger)
 
     all_values = worksheet.get_all_values()
-    report_items = []
-    all_rows_empty = True
 
-    for row_idx in range(CONFIG.start_row_idx, CONFIG.end_row_idx):
+    topics_dict = {}
+    seen_category_subcategories = set()
+    row_idx = CONFIG.start_row_idx
+
+    while True:
         date_val = get_clean_val(all_values, row_idx, COL_DATE)
+
+        if not date_val:
+            break
+
         topic_raw = get_clean_val(all_values, row_idx, COL_TOPIC)
         observation = get_clean_val(all_values, row_idx, COL_OBSERVATION)
         consequence = get_clean_val(all_values, row_idx, COL_CONSEQUENCE)
         solution = get_clean_val(all_values, row_idx, COL_SOLUTION)
-        votes_raw = get_clean_val(all_values, row_idx, COL_VOTES)
+        screenshot_link = get_clean_val(all_values, row_idx, COL_SCREENSHOT_LINK)
 
-        is_empty_row = not date_val and not topic_raw and not votes_raw
-        if is_empty_row:
+        category, subcategory = parse_topic_string(topic_raw)
+
+        if (category, subcategory) in seen_category_subcategories:
+            row_idx += 1
             continue
 
-        all_rows_empty = False
+        seen_category_subcategories.add((category, subcategory))
 
-        row_issues = []
-        if not date_val:
-            row_issues.append("missing date")
-        if not topic_raw:
-            row_issues.append("missing topic")
-        elif "=" not in topic_raw:
-            row_issues.append("missing '=' delimiter in topic")
-        if not votes_raw:
-            row_issues.append("missing vote count")
+        obs_sanitized = sanitize_markdown(observation)
+        topic_key = (category, obs_sanitized)
 
-        vote_count = None
-        if votes_raw:
-            try:
-                vote_count = int(votes_raw.replace(",", ""))
-            except ValueError:
-                row_issues.append(f"invalid vote format ('{votes_raw}')")
+        if topic_key in topics_dict:
+            if subcategory:
+                topics_dict[topic_key]["subcategories"].append(subcategory)
+            if screenshot_link:
+                topics_dict[topic_key]["screenshots"].append(screenshot_link)
+        else:
+            if len(topics_dict) >= 10:
+                break
 
-        if row_issues:
-            continue
-
-        topic_parts = topic_raw.split("=", CONFIG.topic_split_max)
-        category = capitalize_text(topic_parts[0])
-        subcategory = capitalize_text(topic_parts[1])
-
-        report_items.append(
-            {
+            topics_dict[topic_key] = {
                 "category": category,
-                "subcategory": subcategory,
-                "votes": vote_count,
-                "observation": sanitize_markdown(observation),
+                "subcategories": [subcategory] if subcategory else [],
+                "observation": obs_sanitized,
                 "consequence": sanitize_markdown(consequence),
                 "solution": sanitize_markdown(solution),
+                "screenshots": [screenshot_link] if screenshot_link else [],
             }
-        )
 
-    if all_rows_empty or not report_items:
+        row_idx += 1
+
+    if not topics_dict:
         return ["No valid reports"]
 
-    report_items.sort(key=lambda item: item["votes"], reverse=True)
-
-    messages = []
-    for rank, item in enumerate(report_items, start=CONFIG.rank_start_index):
-        message_content = (
-            f"**--- {rank}. Topic: {item['category']} ---**\n"
-            f"Sum Votes = {item['votes']}\n\n"
-            f"**Description:**\n"
-            f"{item['subcategory']}\n\n"
-            f"**Observation:**\n"
-            f"{item['observation']}\n\n"
-            f"**Consequence:**\n"
-            f"{item['consequence']}\n\n"
-            f"**Suggested Solution:**\n"
-            f"{item['solution']}\n\n"
-            f"**State:**\n"
-            f"All"
+    return [
+        format_topic_report_card(
+            rank=rank,
+            category=data["category"],
+            votes_str="xxx",
+            subcategories=data["subcategories"],
+            observation=data["observation"],
+            consequence=data["consequence"],
+            solution=data["solution"],
+            screenshots=data["screenshots"],
         )
-        messages.append(message_content)
-
-    return messages
+        for rank, data in enumerate(topics_dict.values(), start=1)
+    ]
 
 
 async def handle_weekly_report_top_10(interaction: discord.Interaction):
     """Handle the weekly-report-top-10 slash command logic."""
     guild_id = interaction.guild_id if interaction.guild else None
-    is_valid, error_msg = validate_interaction(interaction)
-    if not is_valid:
-        log_event(
-            guild_id,
-            LogLevel.WARNING,
-            f"Invalid weekly-report interaction: {error_msg}",
-        )
-        await interaction.response.send_message(content=error_msg, ephemeral=True)
-        return
 
     try:
         log_event(
@@ -159,11 +131,6 @@ async def handle_weekly_report_top_10(interaction: discord.Interaction):
         discord.app_commands.AppCommandError,
         discord.DiscordException,
     ) as exc:
-        log_event(
-            guild_id, LogLevel.ERROR, f"Weekly report generation failed: {exc}", exc=exc
+        await handle_report_error(
+            interaction, exc, guild_id, "Weekly report generation failed"
         )
-        error_msg = f"❌ **Report generation failed**\n\n`{exc!s}`"
-        if interaction.response.is_done():
-            await interaction.followup.send(content=error_msg, ephemeral=True)
-        else:
-            await interaction.response.send_message(content=error_msg, ephemeral=True)
