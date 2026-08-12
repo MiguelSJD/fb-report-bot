@@ -13,20 +13,6 @@ from utils.formatting import split_message_smartly
 from utils.logger import log_event
 
 
-def validate_interaction(interaction: discord.Interaction) -> tuple[bool, str]:
-    """Ensures command is executed by an authorized user."""
-    guild_id = interaction.guild_id if interaction.guild else None
-
-    if ALLOWED_USER_IDS and interaction.user.id not in ALLOWED_USER_IDS:
-        log_event(
-            guild_id,
-            LogLevel.WARNING,
-            f"Unauthorized command attempt by user {interaction.user} (ID: {interaction.user.id}).",
-        )
-        return False, "⚠️ You do not have permission to execute this command."
-    return True, ""
-
-
 async def send_report_response(
     interaction: discord.Interaction, report_data: str | list[str]
 ):
