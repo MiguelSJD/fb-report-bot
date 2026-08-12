@@ -14,7 +14,7 @@ from utils.constants import (
     COL_CONSEQUENCE,
     COL_DATE,
     COL_OBSERVATION,
-    COL_SCREEN_SHOT_LINK,
+    COL_SCREENSHOT_LINK,
     COL_SOLUTION,
     COL_TOPIC,
     SHEET_UPDATE_DELAY,
@@ -64,7 +64,7 @@ def generate_weekly_top_10_report(worksheet) -> list[str]:
         observation = get_clean_val(all_values, row_idx, COL_OBSERVATION)
         consequence = get_clean_val(all_values, row_idx, COL_CONSEQUENCE)
         solution = get_clean_val(all_values, row_idx, COL_SOLUTION)
-        screenshot_link = get_clean_val(all_values, row_idx, COL_SCREEN_SHOT_LINK)
+        screenshot_link = get_clean_val(all_values, row_idx, COL_SCREENSHOT_LINK)
 
         category_raw, _, subcategory_raw = topic_raw.partition("=")
         category = capitalize_text(category_raw)

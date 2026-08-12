@@ -9,6 +9,7 @@ DATE_FORMAT = "%d/%m/%Y"
 
 # Column Mapping (0-indexed)
 COL_DATE = 0
+COL_SCREENSHOT_LINK = 1
 COL_TOPIC = 2
 COL_OBSERVATION = 3
 COL_CONSEQUENCE = 4

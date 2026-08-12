@@ -14,7 +14,7 @@ from utils.constants import (
     COL_CONSEQUENCE,
     COL_DATE,
     COL_OBSERVATION,
-    COL_SCREEN_SHOT_LINK,
+    COL_SCREENSHOT_LINK,
     COL_SOLUTION,
     COL_TOPIC,
     COL_VOTES,
@@ -66,7 +66,7 @@ def generate_mid_week_report(worksheet) -> list[str]:
         consequence = get_clean_val(all_values, row_idx, COL_CONSEQUENCE)
         solution = get_clean_val(all_values, row_idx, COL_SOLUTION)
         votes_raw = get_clean_val(all_values, row_idx, COL_VOTES)
-        screenshot_link = get_clean_val(all_values, row_idx, COL_SCREEN_SHOT_LINK)
+        screenshot_link = get_clean_val(all_values, row_idx, COL_SCREENSHOT_LINK)
 
         vote_count = 0
         if votes_raw:
