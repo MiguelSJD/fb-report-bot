@@ -19,6 +19,7 @@ class ReportCommandsCog(commands.Cog):
         name="daily-report", description="Generate today's report for votes >= 50"
     )
     @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
     async def daily_report(self, interaction: discord.Interaction):
         """Generates a daily report for the current date."""
         await handle_daily_report(interaction)
