@@ -1,5 +1,5 @@
 """
-Global worksheet schema and utility constants for FB Bot.
+Global worksheet schema and utility constants for F&B Bot.
 """
 
 from typing import Final

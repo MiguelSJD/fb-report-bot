@@ -1,5 +1,5 @@
 """
-Mid-week report generator module for FB Bot.
+Mid-week report generator module for F&B Bot.
 """
 
 import asyncio

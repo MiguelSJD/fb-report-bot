@@ -1,5 +1,5 @@
 """
-Background task for Weekly Top 10 FB Report broadcasts.
+Background task for Weekly Feedback Report broadcasts.
 """
 
 import asyncio

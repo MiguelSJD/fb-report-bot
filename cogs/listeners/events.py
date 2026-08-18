@@ -1,5 +1,5 @@
 """
-Global event listeners and app command error handlers for FB Bot.
+Global event listeners and app command error handlers for F&B Bot.
 """
 
 import discord

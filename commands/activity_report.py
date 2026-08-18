@@ -1,5 +1,5 @@
 """
-Activity report generator module for FB Bot.
+Activity report generator module for F&B Bot.
 """
 
 import asyncio

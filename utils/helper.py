@@ -1,5 +1,5 @@
 """
-General utility functions and helper methods for FB Bot.
+General utility functions and helper methods for F&B Bot.
 """
 
 
