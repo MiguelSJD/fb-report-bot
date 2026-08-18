@@ -17,5 +17,6 @@ DB_PATH = Path(os.getenv("DB_PATH", str(DATA_ROOT / "system" / "servers_settings
 
 # Secrets & Service Keys
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-SPREADSHEET_URL = os.getenv("SPREADSHEET_URL")
+SPREADSHEET_REPORT_URL = os.getenv("SPREADSHEET_REPORT_URL")
+SPREADSHEET_ACTIVITY_URL = os.getenv("SPREADSHEET_ACTIVITY_URL")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

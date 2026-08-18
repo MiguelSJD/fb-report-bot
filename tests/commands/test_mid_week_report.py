@@ -54,11 +54,35 @@ def test_generate_mid_week_report_deduplication_and_screenshots():
         [],
         [],
         # Row 1: Migo Store = Crates
-        [today, "https://link1.com", "Migo store = Bring back crates", "Obs 1", "Cons 1", "Sol 1", "50"],
+        [
+            today,
+            "https://link1.com",
+            "Migo store = Bring back crates",
+            "Obs 1",
+            "Cons 1",
+            "Sol 1",
+            "50",
+        ],
         # Row 2: Same Category & Subcategory, different observation -> MUST BE SKIPPED GLOBALLY
-        [today, "https://link2.com", "Migo store = Bring back crates", "Obs 2", "Cons 2", "Sol 2", "50"],
+        [
+            today,
+            "https://link2.com",
+            "Migo store = Bring back crates",
+            "Obs 2",
+            "Cons 2",
+            "Sol 2",
+            "50",
+        ],
         # Row 3: Same Topic (Category + Obs 1), new Subcategory -> MUST BE AGGREGATED
-        [today, "https://link3.com", "Migo store = Remove bug items", "Obs 1", "Cons 1", "Sol 1", "100"],
+        [
+            today,
+            "https://link3.com",
+            "Migo store = Remove bug items",
+            "Obs 1",
+            "Cons 1",
+            "Sol 1",
+            "100",
+        ],
     ]
 
     mock_worksheet = MagicMock()

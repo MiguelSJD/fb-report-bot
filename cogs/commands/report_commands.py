@@ -9,6 +9,7 @@ from discord.ext import commands
 from commands.daily_report import handle_daily_report
 from commands.mid_week_report import handle_mid_week_report
 from commands.weekly_report import handle_weekly_report_top_10
+from utils.permissions import has_required_roles
 
 
 class ReportCommandsCog(commands.Cog):
@@ -20,6 +21,7 @@ class ReportCommandsCog(commands.Cog):
     )
     @app_commands.guild_only()
     @app_commands.default_permissions(administrator=True)
+    @has_required_roles()
     async def daily_report(self, interaction: discord.Interaction):
         """Generates a daily report for the current date."""
         await handle_daily_report(interaction)
@@ -29,6 +31,7 @@ class ReportCommandsCog(commands.Cog):
     )
     @app_commands.guild_only()
     @app_commands.default_permissions(administrator=True)
+    @has_required_roles()
     async def mid_week_report(self, interaction: discord.Interaction):
         """Generates a mid-week report across multiple messages."""
         await handle_mid_week_report(interaction)
@@ -39,6 +42,7 @@ class ReportCommandsCog(commands.Cog):
     )
     @app_commands.guild_only()
     @app_commands.default_permissions(administrator=True)
+    @has_required_roles()
     async def weekly_report_top_10(self, interaction: discord.Interaction):
         """Generates a weekly top 10 feedback report across multiple messages."""
         await handle_weekly_report_top_10(interaction)

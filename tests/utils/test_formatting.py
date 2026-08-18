@@ -4,22 +4,10 @@ Unit tests for formatting and text manipulation utilities.
 
 from utils.formatting import (
     capitalize_text,
-    get_clean_val,
     get_unique_non_empty,
     sanitize_markdown,
     split_message_smartly,
 )
-
-
-def test_get_clean_val_valid():
-    rows = [["", "  Topic A  ", "100"]]
-    assert get_clean_val(rows, 0, 1) == "Topic A"
-
-
-def test_get_clean_val_out_of_bounds():
-    rows = [["A", "B"]]
-    assert get_clean_val(rows, 1, 0) is None
-    assert get_clean_val(rows, 0, 5) is None
 
 
 def test_capitalize_text():
@@ -41,7 +29,10 @@ def test_get_unique_non_empty():
 
 def test_sanitize_markdown():
     raw_text = "**Bold** and *Italic* and ~~Strikethrough~~"
-    assert sanitize_markdown(raw_text) == "\\*\\*Bold\\*\\* and \\*Italic\\* and \\~\\~Strikethrough\\~\\~"
+    assert (
+        sanitize_markdown(raw_text)
+        == "\\*\\*Bold\\*\\* and \\*Italic\\* and \\~\\~Strikethrough\\~\\~"
+    )
 
 
 def test_split_message_smartly_under_limit():
