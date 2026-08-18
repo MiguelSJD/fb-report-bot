@@ -12,7 +12,7 @@ from commands.mid_week_report import generate_mid_week_report
 from models.log_level import LogLevel
 from models.weekday import Weekday
 from utils.broadcaster import broadcast_report_to_servers
-from utils.google_sheets import get_worksheet
+from utils.google_sheets import get_report_worksheet
 from utils.logger import log_event
 
 CRON_TIMES = [
@@ -38,7 +38,7 @@ class MidWeekReportCron(commands.Cog):
 
         try:
             log_event(None, LogLevel.INFO, "Starting scheduled Mid-Week Report cron...")
-            worksheet = get_worksheet()
+            worksheet = get_report_worksheet()
             report_data = await asyncio.to_thread(
                 lambda: generate_mid_week_report(worksheet)
             )

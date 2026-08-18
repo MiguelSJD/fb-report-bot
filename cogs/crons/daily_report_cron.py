@@ -12,7 +12,7 @@ from commands.daily_report import generate_daily_report
 from models.log_level import LogLevel
 from models.weekday import Weekday
 from utils.broadcaster import broadcast_report_to_servers
-from utils.google_sheets import get_worksheet
+from utils.google_sheets import get_report_worksheet
 from utils.logger import log_event
 
 CRON_TIMES = [
@@ -44,7 +44,7 @@ class DailyReportCron(commands.Cog):
 
         try:
             log_event(None, LogLevel.INFO, "Starting scheduled Daily Report cron...")
-            worksheet = get_worksheet()
+            worksheet = get_report_worksheet()
             report_data = await asyncio.to_thread(
                 lambda: generate_daily_report(worksheet)
             )

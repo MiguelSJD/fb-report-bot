@@ -17,7 +17,15 @@ def test_generate_weekly_top_10_report_sorting_and_screenshots():
         [],
         [],
         [],
-        [today, "https://img.com/a.png", "Feature=Option A", "Obs A", "Cons A", "Sol A", "10"],
+        [
+            today,
+            "https://img.com/a.png",
+            "Feature=Option A",
+            "Obs A",
+            "Cons A",
+            "Sol A",
+            "10",
+        ],
         [today, "", "Feature=Option B", "Obs B", "Cons B", "Sol B", "500"],
     ]
 

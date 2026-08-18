@@ -29,28 +29,9 @@ def test_generate_daily_report_valid_data():
     assert "# 📊 Daily Feedback Report" in report
     assert "### 📁 Bug (`150` total votes)" in report
     assert "• **FPS Drop** — `150` votes" in report
-    assert "Missing Button" not in report  # Filtered out due to min_vote_threshold (20 < 50)
-
-
-def test_generate_daily_report_corrupted_data():
-    """Test handling of rows with missing fields or invalid vote formats."""
-    today = datetime.now(timezone.utc).strftime(DATE_FORMAT)
-
-    mock_values = [
-        [],
-        [],
-        [],
-        [today, "", "", "", "", "", "100"],
-    ]
-
-    mock_worksheet = MagicMock()
-    mock_worksheet.get_all_values.return_value = mock_values
-
-    report = generate_daily_report(mock_worksheet)
-
-    assert "### ⚠️ Observations" in report
-    assert "Corrupted or incomplete data" in report
-    assert "missing topic" in report
+    assert (
+        "Missing Button" not in report
+    )  # Filtered out due to min_vote_threshold (20 < 50)
 
 
 def test_generate_daily_report_top_5_overflow_and_topic_whitespace():

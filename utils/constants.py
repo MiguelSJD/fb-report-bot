@@ -2,19 +2,21 @@
 Global worksheet schema and utility constants for FB Report Bot.
 """
 
-# Google Sheet Controls
-TRIGGER_CELL = "B2"
-SHEET_UPDATE_DELAY = 1.0
-DATE_FORMAT = "%d/%m/%Y"
+from typing import Final
 
-# Column Mapping (0-indexed)
-COL_DATE = 0
-COL_SCREENSHOT_LINK = 1
-COL_TOPIC = 2
-COL_OBSERVATION = 3
-COL_CONSEQUENCE = 4
-COL_SOLUTION = 5
-COL_VOTES = 6
+# Google Sheet Controls
+TRIGGER_CELL: Final = "B2"
+SHEET_UPDATE_DELAY: Final = 1.0
+DATE_FORMAT: Final = "%d/%m/%Y"
 
 # Discord API Controls
-DISCORD_RATE_LIMIT_DELAY = 0.5
+DISCORD_RATE_LIMIT_DELAY: Final = 0.5
+
+# Activity Allowed Roles ID
+ALLOWED_ROLE_IDS: Final[frozenset[int]] = frozenset(
+    {
+        1347188151214538853,
+        1210459678895636491,
+        1539015775526981662,
+    }
+)
