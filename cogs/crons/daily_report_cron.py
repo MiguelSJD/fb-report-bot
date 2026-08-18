@@ -1,5 +1,5 @@
 """
-Background task for Daily FB Report broadcasts.
+Background task for Daily Feedback Report broadcasts.
 """
 
 import asyncio

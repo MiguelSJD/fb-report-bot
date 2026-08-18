@@ -1,5 +1,5 @@
 """
-Database helper functions for FB Report Bot server settings.
+Database helper functions for F&B Bot server settings.
 Contains all CRUD operations for guild channel configurations.
 """
 

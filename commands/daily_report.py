@@ -1,5 +1,5 @@
 """
-Daily report generator module for FB Report Bot.
+Daily report generator module for F&B Bot.
 """
 
 import asyncio
