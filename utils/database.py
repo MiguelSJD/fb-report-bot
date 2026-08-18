@@ -1,5 +1,5 @@
 """
-Database connection and initialization helper for FB Report Bot.
+Database connection and initialization helper for FB Bot.
 Manages database connection lifecycle and schema initialization.
 """
 

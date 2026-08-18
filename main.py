@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FB Report Bot — Core Application Bootstrapper
+FB Bot — Core Application Bootstrapper
 """
 
 import asyncio
@@ -29,7 +29,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 async def main():
     try:
-        log_event(None, LogLevel.INFO, "Starting FB Report Bot process...")
+        log_event(None, LogLevel.INFO, "Starting FB Bot process...")
 
         cogs_dir = os.path.join(project_root, "cogs")
         if os.path.exists(cogs_dir):

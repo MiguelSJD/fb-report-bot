@@ -1,5 +1,5 @@
 """
-Shared string formatting and data extraction utilities for FB Report Bot.
+Shared string formatting and data extraction utilities for FB Bot.
 """
 
 import re

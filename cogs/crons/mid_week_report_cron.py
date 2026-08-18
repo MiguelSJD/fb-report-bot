@@ -1,5 +1,5 @@
 """
-Background task for Mid-Week FB Report broadcasts.
+Background task for Mid-Week Feedback report broadcasts.
 """
 
 import asyncio

@@ -1,8 +1,8 @@
 <div align="center">
 
-# 📊 FB Report Bot
+# 📊 Feedback & Bugs Bot
 
-**Automated community feedback reporting for Discord, powered by Google Sheets and Google Gemini.**
+**Automated community feedback reporting for Discord, powered by Google Sheets**
 
 [![CI](https://github.com/MiguelSJD/fb-report-bot/actions/workflows/unit-tests.yml/badge.svg?branch=main)](https://github.com/MiguelSJD/fb-report-bot/actions/workflows/unit-tests.yml)
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED.svg)](https://www.docker.com/)
@@ -14,7 +14,7 @@
 
 ## 📖 Overview
 
-`FB Report Bot` bridges community feedback from **Google Sheets** (`gspread`) directly into structured **Discord reports**. It aggregates data, tracks vote thresholds, and organizes user feedback into readable executive summaries for development teams.
+`F&B Bot` bridges community feedback from **Google Sheets** (`gspread`) directly into structured **Discord reports**. It aggregates data, tracks vote thresholds, and organizes user feedback into readable executive summaries for development teams.
 
 ---
 
@@ -27,18 +27,6 @@
 
 ---
 
-## 🗺️ Product Roadmap
-
-### 🤖 AI Moderation (In Development)
-We are actively building optional AI-powered content moderation (`use-ai: True`) utilizing the **Google Gemini API**. 
-
-When enabled, the moderation pipeline will:
-* **Sanitize Output:** Clean up community formatting, awkward spacing, and common typos automatically.
-* **Auto-Redact Violations:** Automatically redact hate speech, profanity, illegal content, or severe harassment from being rendered in public Discord embeds.
-* **Structured Output Parsing:** Utilize strict JSON schemas to guarantee safe data extraction without altering original database records.
-
----
-
 ## 🛠️ Tech Stack
 
 | Category | Technology |
@@ -47,7 +35,6 @@ When enabled, the moderation pipeline will:
 | **Discord Engine** | `discord.py` (App Commands / Slash Commands) |
 | **Spreadsheet Integration** | `gspread` + Google OAuth2 Service Accounts |
 | **Database & Logging** | SQLite3 + Structured JSONL Rotating Logger |
-| **AI Moderation Stack** | Google Gemini API (`google-genai` / Pydantic) |
 | **Containerization** | Docker & Docker Compose |
 
 ---
@@ -63,14 +50,14 @@ When enabled, the moderation pipeline will:
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/your-username/fb-report-bot.git](https://github.com/your-username/fb-report-bot.git)
-   cd fb-report-bot
+   git clone [https://github.com/MiguelSJD/fb-report-bot.git](https://github.com/MiguelSJD/fb-report-bot.git)
+   cd fb-bot
    ```
 
 2. **Add Google Service Account Credentials:**
    Place your downloaded Google Cloud service account key file in the root directory named `credentials.json`:
    ```text
-   fb-report-bot/
+   fb-bot/
    ├── credentials.json  <-- Place key here
    ├── .env
    └── docker-compose.yml

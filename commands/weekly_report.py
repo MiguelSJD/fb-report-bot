@@ -1,5 +1,5 @@
 """
-Weekly Top 10 report generator module for FB Report Bot.
+Weekly Top 10 report generator module for FB Bot.
 """
 
 import asyncio
