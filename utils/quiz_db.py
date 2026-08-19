@@ -52,7 +52,12 @@ def get_all_questions(guild_id: int) -> list[tuple[str, str]]:
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, question FROM quiz_questions WHERE guild_id = ? ORDER BY created_at DESC",
+            """
+            SELECT id, question 
+            FROM quiz_questions 
+            WHERE guild_id = ? 
+            ORDER BY LOWER(question) ASC
+            """,
             (guild_id,),
         )
         return cursor.fetchall()
