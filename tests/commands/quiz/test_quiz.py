@@ -11,12 +11,24 @@ from commands.quiz.quiz import generate_quiz_message, handle_quiz
 
 def test_generate_quiz_message_success():
     """Test generating quiz message with sufficient questions."""
-    mock_questions = ["Question 1", "Question 2", "Question 3", "Question 4", "Question 5"]
-    with patch("commands.quiz.quiz.fetch_and_rotate_quiz_questions", return_value=mock_questions):
-        message = generate_quiz_message("<#12345>")
+    mock_questions = [
+        "Question 1",
+        "Question 2",
+        "Question 3",
+        "Question 4",
+        "Question 5",
+    ]
+    with patch(
+        "commands.quiz.quiz.fetch_and_rotate_quiz_questions",
+        return_value=mock_questions,
+    ):
+        message = generate_quiz_message("https://discord.com/channels/123/456")
 
         assert "# 🧩 Welcome to our weekly Quiz" in message
-        assert "submitting your answers to <#12345> channel" in message
+        assert (
+            "submitting your answers to [weekly-quiz](https://discord.com/channels/123/456) channel"
+            in message
+        )
         assert "1. Question 1" in message
         assert "5. Question 5" in message
 
@@ -37,14 +49,17 @@ async def test_handle_quiz_success():
     mock_interaction.user = "TestUser"
 
     mock_questions = ["Q1", "Q2", "Q3", "Q4", "Q5"]
-    with patch("commands.quiz.quiz.fetch_and_rotate_quiz_questions", return_value=mock_questions):
+    with patch(
+        "commands.quiz.quiz.fetch_and_rotate_quiz_questions",
+        return_value=mock_questions,
+    ):
         await handle_quiz(mock_interaction, tags="<@&789>")
 
         mock_interaction.response.defer.assert_called_once_with(ephemeral=False)
         mock_interaction.followup.send.assert_called_once()
         sent_content = mock_interaction.followup.send.call_args[1]["content"]
 
-        assert "<#456>" in sent_content
+        assert "[weekly-quiz]" in sent_content
         assert "<@&789>" in sent_content
 
 

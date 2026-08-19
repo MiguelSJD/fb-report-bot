@@ -1,6 +1,7 @@
 """
 Unit tests for /quiz-add slash command handler.
 """
+
 import sqlite3
 from unittest.mock import AsyncMock, patch
 
@@ -32,7 +33,9 @@ async def test_handle_quiz_add_failure():
     mock_interaction = AsyncMock()
     mock_interaction.guild_id = 123
 
-    with patch("commands.quiz.quiz_add.add_question", side_effect=sqlite3.Error("DB Error")):
+    with patch(
+        "commands.quiz.quiz_add.add_question", side_effect=sqlite3.Error("DB Error")
+    ):
         await handle_quiz_add(mock_interaction, "What is Python?")
 
         mock_interaction.response.send_message.assert_called_once_with(

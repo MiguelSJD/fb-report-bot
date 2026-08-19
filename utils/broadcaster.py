@@ -45,7 +45,9 @@ async def broadcast_report_to_servers(
         if not channel:
             continue
 
-        raw_messages = [report_data] if isinstance(report_data, str) else list(report_data)
+        raw_messages = (
+            [report_data] if isinstance(report_data, str) else list(report_data)
+        )
 
         if tags and raw_messages:
             raw_messages[0] = f"{tags.strip()}\n{raw_messages[0]}"

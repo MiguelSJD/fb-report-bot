@@ -162,7 +162,9 @@ async def test_handle_activity_report_exception_handling(monkeypatch):
     def raise_error(tab_name):
         raise RuntimeError("Sheets API down")
 
-    monkeypatch.setattr("commands.activity.activity_report.get_activity_worksheet", raise_error)
+    monkeypatch.setattr(
+        "commands.activity.activity_report.get_activity_worksheet", raise_error
+    )
     monkeypatch.setattr(
         "commands.activity.activity_report.log_event", lambda *args, **kwargs: None
     )
