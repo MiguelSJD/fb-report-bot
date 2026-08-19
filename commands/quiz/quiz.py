@@ -13,12 +13,14 @@ from utils.logger import log_event
 from utils.quiz_db import fetch_and_rotate_quiz_questions
 
 
-def generate_quiz_message(target_channel_link: str | None = None) -> str | None:
+def generate_quiz_message(
+    guild_id: int, target_channel_link: str | None = None
+) -> str | None:
     """
     Fetches 5 questions and formats the quiz broadcast message.
     Returns None if fewer than 5 total questions exist in the database.
     """
-    questions = fetch_and_rotate_quiz_questions()
+    questions = fetch_and_rotate_quiz_questions(guild_id)
     if not questions:
         return None
 
@@ -44,7 +46,7 @@ async def handle_quiz(
         log_event(guild_id, LogLevel.INFO, f"User {interaction.user} triggered /quiz")
         await interaction.response.defer(ephemeral=False)
 
-        quiz_body = await asyncio.to_thread(lambda: generate_quiz_message())
+        quiz_body = await asyncio.to_thread(lambda: generate_quiz_message(guild_id))
 
         if not quiz_body:
             log_event(

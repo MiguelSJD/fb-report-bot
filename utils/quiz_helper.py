@@ -13,9 +13,14 @@ class QuizDeleteConfirmView(discord.ui.View):
     """Confirmation view with 'Confirm' and 'Cancel' buttons for deletion."""
 
     def __init__(
-        self, question_id: str, question_text: str, parent_view: "QuizListView"
+        self,
+        guild_id: int,
+        question_id: str,
+        question_text: str,
+        parent_view: "QuizListView",
     ):
         super().__init__(timeout=60)
+        self.guild_id = guild_id
         self.question_id = question_id
         self.question_text = question_text
         self.parent_view = parent_view
@@ -24,10 +29,10 @@ class QuizDeleteConfirmView(discord.ui.View):
         label="Confirm Delete", style=discord.ButtonStyle.danger, emoji="🗑️"
     )
     async def confirm(self, interaction: discord.Interaction):
-        deleted = remove_question(self.question_id)
+        deleted = remove_question(self.guild_id, self.question_id)
 
         if deleted:
-            questions = get_all_questions()
+            questions = get_all_questions(self.guild_id)
             if not questions:
                 await interaction.response.edit_message(
                     embed=discord.Embed(
@@ -43,7 +48,9 @@ class QuizDeleteConfirmView(discord.ui.View):
                 )
                 new_page = min(self.parent_view.current_page, max_pages - 1)
 
-                new_view = QuizListView(questions, current_page=new_page)
+                new_view = QuizListView(
+                    self.guild_id, questions, current_page=new_page
+                )
                 embed = new_view.build_embed()
                 await interaction.response.edit_message(embed=embed, view=new_view)
         else:
@@ -62,10 +69,12 @@ class QuizDeleteSelect(discord.ui.Select):
 
     def __init__(
         self,
+        guild_id: int,
         page_questions: list[tuple[str, str]],
         page_offset: int,
         parent_view: "QuizListView",
     ):
+        self.guild_id = guild_id
         self.parent_view = parent_view
         self.questions_map = {q_id: text for q_id, text in page_questions}
 
@@ -86,10 +95,11 @@ class QuizDeleteSelect(discord.ui.Select):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        q_id = self.values[0]  # Full UUID
+        q_id = self.values[0]
         q_text = self.questions_map.get(q_id, "Unknown Question")
 
         confirm_view = QuizDeleteConfirmView(
+            guild_id=self.guild_id,
             question_id=q_id,
             question_text=q_text,
             parent_view=self.parent_view,
@@ -113,8 +123,14 @@ class QuizListView(discord.ui.View):
 
     ITEMS_PER_PAGE = 10
 
-    def __init__(self, questions: list[tuple[str, str]], current_page: int = 0):
+    def __init__(
+        self,
+        guild_id: int,
+        questions: list[tuple[str, str]],
+        current_page: int = 0,
+    ):
         super().__init__(timeout=180)
+        self.guild_id = guild_id
         self.questions = questions
         self.current_page = current_page
         self.max_pages = max(1, math.ceil(len(questions) / self.ITEMS_PER_PAGE))
@@ -125,13 +141,16 @@ class QuizListView(discord.ui.View):
         """Rebuilds components for the current active page."""
         self.clear_items()
 
-        # Slice current page items
         start_idx = self.current_page * self.ITEMS_PER_PAGE
         end_idx = start_idx + self.ITEMS_PER_PAGE
         page_items = self.questions[start_idx:end_idx]
 
         if page_items:
-            self.add_item(QuizDeleteSelect(page_items, start_idx, parent_view=self))
+            self.add_item(
+                QuizDeleteSelect(
+                    self.guild_id, page_items, start_idx, parent_view=self
+                )
+            )
 
         if self.max_pages > 1:
             prev_btn = discord.ui.Button(

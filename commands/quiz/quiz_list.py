@@ -17,7 +17,7 @@ async def handle_quiz_list(interaction: discord.Interaction) -> None:
     guild_id = interaction.guild_id if interaction.guild else None
 
     try:
-        questions = get_all_questions()
+        questions = get_all_questions(guild_id)
         if not questions:
             await interaction.response.send_message(
                 embed=discord.Embed(
@@ -29,7 +29,7 @@ async def handle_quiz_list(interaction: discord.Interaction) -> None:
             )
             return
 
-        view = QuizListView(questions)
+        view = QuizListView(guild_id, questions)
         embed = view.build_embed()
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     except (

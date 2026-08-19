@@ -16,7 +16,7 @@ async def handle_quiz_add(interaction: discord.Interaction, question: str) -> No
     guild_id = interaction.guild_id if interaction.guild else None
 
     try:
-        question_id = add_question(question)
+        question_id = add_question(guild_id, question)
         log_event(
             guild_id,
             LogLevel.INFO,

@@ -2,16 +2,14 @@
 Background task for Weekly Quiz broadcasts.
 """
 
-import asyncio
 import datetime
 
-import discord
 from discord.ext import commands, tasks
 
 from commands.quiz.quiz import generate_quiz_message
 from models.log_level import LogLevel
 from models.weekday import Weekday
-from utils.broadcaster import broadcast_report_to_servers
+from utils.broadcaster import broadcast_quiz_per_server
 from utils.constants import CRON_TYPE_CHOICES
 from utils.logger import log_event
 
@@ -37,25 +35,19 @@ class QuizCron(commands.Cog):
 
         try:
             log_event(None, LogLevel.INFO, "Starting scheduled Quiz cron...")
-            quiz_data = await asyncio.to_thread(lambda: generate_quiz_message())
 
-            if quiz_data:
-                cron_type_val = next(
-                    (c.value for c in CRON_TYPE_CHOICES if c.name.lower() == "quiz"),
-                    "quiz",
-                )
+            cron_type_val = next(
+                (c.value for c in CRON_TYPE_CHOICES if c.name.lower() == "quiz"),
+                "quiz",
+            )
 
-                await broadcast_report_to_servers(
-                    self.bot, quiz_data, cron_type=cron_type_val
-                )
-                log_event(None, LogLevel.INFO, "Quiz cron completed successfully.")
-            else:
-                log_event(
-                    None,
-                    LogLevel.WARNING,
-                    "Quiz cron skipped: Not enough questions found in database (minimum 5 required).",
-                )
-        except (discord.HTTPException, discord.DiscordException, OSError) as exc:
+            await broadcast_quiz_per_server(
+                self.bot,
+                quiz_generator_fn=generate_quiz_message,
+                cron_type=cron_type_val,
+            )
+            log_event(None, LogLevel.INFO, "Quiz cron completed successfully.")
+        except Exception as exc:
             log_event(
                 None, LogLevel.ERROR, f"Quiz CRON Execution Error: {exc}", exc=exc
             )

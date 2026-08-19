@@ -18,15 +18,22 @@ def test_generate_quiz_message_success():
         "Question 4",
         "Question 5",
     ]
+    test_guild_id = 123
+    target_link = "https://discord.com/channels/123/456"
+
     with patch(
         "commands.quiz.quiz.fetch_and_rotate_quiz_questions",
         return_value=mock_questions,
-    ):
-        message = generate_quiz_message("https://discord.com/channels/123/456")
+    ) as mock_fetch:
+        message = generate_quiz_message(
+            guild_id=test_guild_id,
+            target_channel_link=target_link,
+        )
 
+        mock_fetch.assert_called_once_with(test_guild_id)
         assert "# 🧩 Welcome to our weekly Quiz" in message
         assert (
-            "submitting your answers to [weekly-quiz](https://discord.com/channels/123/456) channel"
+            f"submitting your answers to [weekly-quiz]({target_link}) channel"
             in message
         )
         assert "1. Question 1" in message
@@ -35,8 +42,15 @@ def test_generate_quiz_message_success():
 
 def test_generate_quiz_message_insufficient_questions():
     """Test that generate_quiz_message returns None when fewer than 5 questions exist."""
-    with patch("commands.quiz.quiz.fetch_and_rotate_quiz_questions", return_value=[]):
-        message = generate_quiz_message()
+    test_guild_id = 123
+
+    with patch(
+        "commands.quiz.quiz.fetch_and_rotate_quiz_questions",
+        return_value=[],
+    ) as mock_fetch:
+        message = generate_quiz_message(guild_id=test_guild_id)
+
+        mock_fetch.assert_called_once_with(test_guild_id)
         assert message is None
 
 
@@ -52,9 +66,10 @@ async def test_handle_quiz_success():
     with patch(
         "commands.quiz.quiz.fetch_and_rotate_quiz_questions",
         return_value=mock_questions,
-    ):
+    ) as mock_fetch:
         await handle_quiz(mock_interaction, tags="<@&789>")
 
+        mock_fetch.assert_called_once_with(mock_interaction.guild_id)
         mock_interaction.response.defer.assert_called_once_with(ephemeral=False)
         mock_interaction.followup.send.assert_called_once()
         sent_content = mock_interaction.followup.send.call_args[1]["content"]
@@ -70,9 +85,13 @@ async def test_handle_quiz_not_enough_questions():
     mock_interaction.guild_id = 123
     mock_interaction.user = "TestUser"
 
-    with patch("commands.quiz.quiz.fetch_and_rotate_quiz_questions", return_value=[]):
+    with patch(
+        "commands.quiz.quiz.fetch_and_rotate_quiz_questions",
+        return_value=[],
+    ) as mock_fetch:
         await handle_quiz(mock_interaction)
 
+        mock_fetch.assert_called_once_with(mock_interaction.guild_id)
         mock_interaction.followup.send.assert_called_once_with(
             content="❌ **Not enough questions found.** At least 5 questions are required in the database.",
             ephemeral=True,

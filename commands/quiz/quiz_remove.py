@@ -18,7 +18,7 @@ async def handle_quiz_remove(
     guild_id = interaction.guild_id if interaction.guild else None
 
     try:
-        deleted = remove_question(question_id)
+        deleted = remove_question(guild_id, question_id)
         if deleted:
             log_event(
                 guild_id,
