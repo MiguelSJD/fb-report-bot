@@ -3,7 +3,7 @@ Shared broadcasting logic for automated crons.
 """
 
 import asyncio
-from typing import Callable
+from collections.abc import Callable
 
 import discord
 
@@ -36,7 +36,7 @@ async def broadcast_quiz_per_server(
         guild_channels.setdefault(guild_id, []).append((channel_id, tags))
 
     for guild_id, targets in guild_channels.items():
-        quiz_data = await asyncio.to_thread(lambda: quiz_generator_fn(guild_id))
+        quiz_data = await asyncio.to_thread(quiz_generator_fn, guild_id)
         if not quiz_data:
             log_event(
                 guild_id,

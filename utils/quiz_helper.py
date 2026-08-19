@@ -48,9 +48,7 @@ class QuizDeleteConfirmView(discord.ui.View):
                 )
                 new_page = min(self.parent_view.current_page, max_pages - 1)
 
-                new_view = QuizListView(
-                    self.guild_id, questions, current_page=new_page
-                )
+                new_view = QuizListView(self.guild_id, questions, current_page=new_page)
                 embed = new_view.build_embed()
                 await interaction.response.edit_message(embed=embed, view=new_view)
         else:
@@ -147,9 +145,7 @@ class QuizListView(discord.ui.View):
 
         if page_items:
             self.add_item(
-                QuizDeleteSelect(
-                    self.guild_id, page_items, start_idx, parent_view=self
-                )
+                QuizDeleteSelect(self.guild_id, page_items, start_idx, parent_view=self)
             )
 
         if self.max_pages > 1:

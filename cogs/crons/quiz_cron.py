@@ -4,6 +4,7 @@ Background task for Weekly Quiz broadcasts.
 
 import datetime
 
+import discord
 from discord.ext import commands, tasks
 
 from commands.quiz.quiz import generate_quiz_message
@@ -47,7 +48,7 @@ class QuizCron(commands.Cog):
                 cron_type=cron_type_val,
             )
             log_event(None, LogLevel.INFO, "Quiz cron completed successfully.")
-        except Exception as exc:
+        except (discord.HTTPException, discord.DiscordException, OSError) as exc:
             log_event(
                 None, LogLevel.ERROR, f"Quiz CRON Execution Error: {exc}", exc=exc
             )
