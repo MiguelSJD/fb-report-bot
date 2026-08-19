@@ -5,7 +5,7 @@ Unit tests for daily report generation logic.
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-from commands.daily_report import generate_daily_report
+from commands.report.daily_report import generate_daily_report
 from utils.constants import DATE_FORMAT
 
 

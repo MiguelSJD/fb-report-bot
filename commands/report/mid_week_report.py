@@ -1,5 +1,5 @@
 """
-Weekly Top 10 report generator module for F&B Bot.
+Mid-week report generator module for F&B Bot.
 """
 
 import asyncio
@@ -16,30 +16,31 @@ from utils.discord import (
 from utils.formatting import (
     format_topic_report_card,
     parse_topic_string,
+    parse_vote_count,
     sanitize_markdown,
 )
 from utils.google_sheets import get_report_worksheet
-from utils.helper import extract_row_data
 from utils.logger import log_event
+from utils.report_helper import extract_row_data
 
 
 @dataclass(frozen=True)
-class WeeklyTop10ReportConfig:
-    lookback_days_trigger: str = "6"
+class MidWeekReportConfig:
+    lookback_days_trigger: str = "2"
     start_row_idx: int = 3
 
 
-CONFIG = WeeklyTop10ReportConfig()
+CONFIG = MidWeekReportConfig()
 
 
-def generate_weekly_top_10_report(worksheet) -> list[str]:
-    """Generate a weekly top 10 report from configured worksheet rows."""
+def generate_mid_week_report(worksheet) -> list[str]:
+    """Generate a mid-week report spanning configured lookback days prior up to current day."""
     trigger_sheet_update(worksheet, CONFIG.lookback_days_trigger)
 
     all_values = worksheet.get_all_values()
 
     topics_dict = {}
-    seen_category_subcategories = set()
+    seen_category_subcats = set()
 
     for row in all_values[CONFIG.start_row_idx :]:
         (
@@ -49,18 +50,19 @@ def generate_weekly_top_10_report(worksheet) -> list[str]:
             observation,
             consequence,
             solution,
-            _,
+            votes_raw,
         ) = extract_row_data(row)
 
         if not date_val:
             break
 
+        vote_count = parse_vote_count(votes_raw)
         category, subcategory = parse_topic_string(topic_raw)
 
-        if (category, subcategory) in seen_category_subcategories:
+        if (category, subcategory) in seen_category_subcats:
             continue
 
-        seen_category_subcategories.add((category, subcategory))
+        seen_category_subcats.add((category, subcategory))
 
         obs_sanitized = sanitize_markdown(observation)
         topic_key = (category, obs_sanitized)
@@ -70,9 +72,10 @@ def generate_weekly_top_10_report(worksheet) -> list[str]:
                 topics_dict[topic_key]["subcategories"].append(subcategory)
             if screenshot_link:
                 topics_dict[topic_key]["screenshots"].append(screenshot_link)
+            topics_dict[topic_key]["votes"] += vote_count
         else:
-            if len(topics_dict) >= 10:
-                break
+            if len(topics_dict) >= 5:
+                continue
 
             topics_dict[topic_key] = {
                 "category": category,
@@ -80,6 +83,7 @@ def generate_weekly_top_10_report(worksheet) -> list[str]:
                 "observation": obs_sanitized,
                 "consequence": sanitize_markdown(consequence),
                 "solution": sanitize_markdown(solution),
+                "votes": vote_count,
                 "screenshots": [screenshot_link] if screenshot_link else [],
             }
 
@@ -90,7 +94,7 @@ def generate_weekly_top_10_report(worksheet) -> list[str]:
         format_topic_report_card(
             rank=rank,
             category=data["category"],
-            votes_str="xxx",
+            votes_str=str(data["votes"]),
             subcategories=data["subcategories"],
             observation=data["observation"],
             consequence=data["consequence"],
@@ -101,19 +105,19 @@ def generate_weekly_top_10_report(worksheet) -> list[str]:
     ]
 
 
-async def handle_weekly_report_top_10(interaction: discord.Interaction):
-    """Handle the weekly-report-top-10 slash command logic."""
+async def handle_mid_week_report(interaction: discord.Interaction):
+    """Handle the mid-week-report slash command logic."""
     guild_id = interaction.guild_id if interaction.guild else None
 
     try:
         log_event(
             guild_id,
             LogLevel.INFO,
-            f"User {interaction.user} triggered /weekly-report-top-10",
+            f"User {interaction.user} triggered /mid-week-report",
         )
         await interaction.response.defer(ephemeral=False)
         report_messages = await asyncio.to_thread(
-            lambda: generate_weekly_top_10_report(get_report_worksheet())
+            lambda: generate_mid_week_report(get_report_worksheet())
         )
         await send_report_response(interaction, report_messages)
     except (
@@ -122,5 +126,5 @@ async def handle_weekly_report_top_10(interaction: discord.Interaction):
         discord.DiscordException,
     ) as exc:
         await handle_report_error(
-            interaction, exc, guild_id, "Weekly report generation failed"
+            interaction, exc, guild_id, "Mid-week report generation failed"
         )

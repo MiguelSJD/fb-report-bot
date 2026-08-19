@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from utils.server_settings import (
+from utils.settings_db import (
     get_all_guild_channels,
     get_guild_channel,
     remove_guild_channel,
@@ -38,7 +38,7 @@ def mock_db():
         yield conn
 
     with (
-        patch("utils.server_settings.get_db_connection", _get_test_db),
+        patch("utils.settings_db.py.get_db_connection", _get_test_db),
         patch("utils.database.get_db_connection", _get_test_db),
     ):
         yield conn

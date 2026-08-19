@@ -9,7 +9,7 @@ import discord
 from models.log_level import LogLevel
 from utils.formatting import split_message_smartly
 from utils.logger import log_event
-from utils.server_settings import get_all_guild_channels
+from utils.settings_db import get_all_guild_channels
 
 
 async def broadcast_report_to_servers(

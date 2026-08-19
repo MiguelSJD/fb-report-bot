@@ -5,7 +5,7 @@ Unit tests for mid-week report generation logic.
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-from commands.mid_week_report import generate_mid_week_report
+from commands.report.mid_week_report import generate_mid_week_report
 from utils.constants import DATE_FORMAT
 
 

@@ -10,6 +10,13 @@ from contextlib import contextmanager
 from config import DB_PATH
 from models.log_level import LogLevel
 from utils.logger import log_event
+from utils.quiz_db import init_quiz_table
+from utils.settings_db import init_settings_table
+
+SCHEMA_INITIALIZERS = [
+    init_settings_table,
+    init_quiz_table,
+]
 
 
 def ensure_db_directory():
@@ -36,20 +43,12 @@ def get_db_connection():
 
 
 def initialize_database():
-    """Create the guild_channels table if it doesn't exist."""
+    """Execute all registered schema initializers within a single transaction."""
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS guild_channels
-                (
-                    guild_id INTEGER PRIMARY KEY,
-                    channel_id INTEGER NOT NULL,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
+            for init_schema in SCHEMA_INITIALIZERS:
+                init_schema(cursor)
             conn.commit()
             log_event(
                 None, LogLevel.INFO, f"Database initialized successfully at: {DB_PATH}"

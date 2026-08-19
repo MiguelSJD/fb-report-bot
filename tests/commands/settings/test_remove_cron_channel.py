@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from commands.remove_cron_channel import handle_remove_cron_channel
+from commands.settings.remove_cron_channel import handle_remove_cron_channel
 
 
 @pytest.mark.asyncio

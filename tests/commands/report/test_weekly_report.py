@@ -5,7 +5,7 @@ Unit tests for weekly top 10 report generation logic.
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-from commands.weekly_report import generate_weekly_top_10_report
+from commands.report.weekly_report import generate_weekly_top_10_report
 from utils.constants import DATE_FORMAT
 
 

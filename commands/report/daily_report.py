@@ -21,8 +21,8 @@ from utils.formatting import (
     parse_vote_count,
 )
 from utils.google_sheets import get_report_worksheet
-from utils.helper import extract_row_data
 from utils.logger import log_event
+from utils.report_helper import extract_row_data
 
 
 @dataclass(frozen=True)

@@ -6,9 +6,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from commands.daily_report import handle_daily_report
-from commands.mid_week_report import handle_mid_week_report
-from commands.weekly_report import handle_weekly_report_top_10
+from commands.report.daily_report import handle_daily_report
+from commands.report.mid_week_report import handle_mid_week_report
+from commands.report.weekly_report import handle_weekly_report_top_10
 from utils.permissions import has_required_roles
 
 

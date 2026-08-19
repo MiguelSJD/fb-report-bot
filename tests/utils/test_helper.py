@@ -2,7 +2,7 @@
 Unit tests for utility functions and helper methods.
 """
 
-from utils.helper import extract_row_data
+from utils.report_helper import extract_row_data
 
 
 def test_extract_row_data_standard_complete_row():

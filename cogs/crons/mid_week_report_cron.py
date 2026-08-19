@@ -8,7 +8,7 @@ import datetime
 import discord
 from discord.ext import commands, tasks
 
-from commands.mid_week_report import generate_mid_week_report
+from commands.report.mid_week_report import generate_mid_week_report
 from models.log_level import LogLevel
 from models.weekday import Weekday
 from utils.broadcaster import broadcast_report_to_servers

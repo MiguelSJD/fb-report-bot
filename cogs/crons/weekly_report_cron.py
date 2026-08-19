@@ -8,7 +8,7 @@ import datetime
 import discord
 from discord.ext import commands, tasks
 
-from commands.weekly_report import generate_weekly_top_10_report
+from commands.report.weekly_report import generate_weekly_top_10_report
 from models.log_level import LogLevel
 from models.weekday import Weekday
 from utils.broadcaster import broadcast_report_to_servers
