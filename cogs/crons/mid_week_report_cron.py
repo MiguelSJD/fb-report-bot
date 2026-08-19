@@ -12,6 +12,7 @@ from commands.report.mid_week_report import generate_mid_week_report
 from models.log_level import LogLevel
 from models.weekday import Weekday
 from utils.broadcaster import broadcast_report_to_servers
+from utils.constants import CRON_TYPE_CHOICES
 from utils.google_sheets import get_report_worksheet
 from utils.logger import log_event
 
@@ -44,7 +45,17 @@ class MidWeekReportCron(commands.Cog):
             )
 
             if report_data:
-                await broadcast_report_to_servers(self.bot, report_data)
+                cron_type_val = next(
+                    (
+                        c.value
+                        for c in CRON_TYPE_CHOICES
+                        if "mid-week" in c.value.lower()
+                    ),
+                    "mid-week-report",
+                )
+                await broadcast_report_to_servers(
+                    self.bot, report_data, cron_type=cron_type_val
+                )
                 log_event(
                     None, LogLevel.INFO, "Mid-Week Report cron completed successfully."
                 )

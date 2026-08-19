@@ -28,11 +28,11 @@ class QuizCron(commands.Cog):
     def cog_unload(self):
         self.quiz_task.cancel()
 
-    @tasks.loop(time=CRON_TIMES)
+    @tasks.loop(seconds=60)
     async def quiz_task(self):
         weekday = datetime.datetime.now(datetime.timezone.utc).weekday()
 
-        if weekday != Weekday.MONDAY:
+        if weekday == Weekday.MONDAY:
             return
 
         try:
@@ -40,8 +40,13 @@ class QuizCron(commands.Cog):
             quiz_data = await asyncio.to_thread(lambda: generate_quiz_message())
 
             if quiz_data:
+                cron_type_val = next(
+                    (c.value for c in CRON_TYPE_CHOICES if c.name.lower() == "quiz"),
+                    "quiz",
+                )
+
                 await broadcast_report_to_servers(
-                    self.bot, quiz_data, cron_type=CRON_TYPE_CHOICES["quiz"]
+                    self.bot, quiz_data, cron_type=cron_type_val
                 )
                 log_event(None, LogLevel.INFO, "Quiz cron completed successfully.")
             else:

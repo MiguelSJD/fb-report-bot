@@ -50,7 +50,7 @@ async def broadcast_report_to_servers(
         )
 
         if tags and raw_messages:
-            raw_messages[0] = f"{tags.strip()}\n{raw_messages[0]}"
+            raw_messages[-1] = f"{raw_messages[-1]}\n\n{tags.strip()}"
 
         for msg in raw_messages:
             chunks = split_message_smartly(msg)

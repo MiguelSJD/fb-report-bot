@@ -4,6 +4,7 @@ Unit tests for /quiz-list slash command handler.
 
 from unittest.mock import AsyncMock, patch
 
+import discord
 import pytest
 
 from commands.quiz.quiz_list import handle_quiz_list
@@ -17,10 +18,17 @@ async def test_handle_quiz_list_empty():
     with patch("commands.quiz.quiz_list.get_all_questions", return_value=[]):
         await handle_quiz_list(mock_interaction)
 
-        mock_interaction.response.send_message.assert_called_once_with(
-            "📝 **Quiz Questions List:**\n*No questions found.*",
-            ephemeral=True,
-        )
+        mock_interaction.response.send_message.assert_called_once()
+        kwargs = mock_interaction.response.send_message.call_args[1]
+
+        # Verify ephemeral flag and embed title/description
+        assert kwargs["ephemeral"] is True
+        assert "embed" in kwargs
+
+        embed = kwargs["embed"]
+        assert isinstance(embed, discord.Embed)
+        assert embed.title == "📝 Quiz Questions List"
+        assert "*No questions found.*" in embed.description
 
 
 @pytest.mark.asyncio
@@ -34,6 +42,12 @@ async def test_handle_quiz_list_with_data():
 
         mock_interaction.response.send_message.assert_called_once()
         kwargs = mock_interaction.response.send_message.call_args[1]
-        assert "Sample Question 1" in kwargs["content"]
-        assert kwargs["view"] is not None
+
         assert kwargs["ephemeral"] is True
+        assert "embed" in kwargs
+        assert "view" in kwargs
+
+        embed = kwargs["embed"]
+        assert isinstance(embed, discord.Embed)
+        assert "Sample Question 1" in embed.description
+        assert "12345678-q_id" in embed.description
