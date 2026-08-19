@@ -9,25 +9,25 @@ import discord
 from models.log_level import LogLevel
 from utils.formatting import split_message_smartly
 from utils.logger import log_event
-from utils.settings_db import get_all_guild_channels
+from utils.settings_db import get_cron_channels_by_type
 
 
 async def broadcast_report_to_servers(
-    bot: discord.Client, report_data: str | list[str]
-):
-    """Helper to send reports to all configured channels across all servers."""
-    channel_ids = get_all_guild_channels()
-    if not channel_ids:
+    bot: discord.Client,
+    report_data: str | list[str],
+    cron_type: str,
+) -> None:
+    """Helper to send reports and ping tags to all configured channels for a specific cron type."""
+    channels_info = get_cron_channels_by_type(cron_type)
+    if not channels_info:
         log_event(
             None,
             LogLevel.WARNING,
-            "Broadcast skipped: No servers have configured a cron channel.",
+            f"Broadcast skipped: No servers have configured a channel for '{cron_type}'.",
         )
         return
 
-    messages = [report_data] if isinstance(report_data, str) else report_data
-
-    for channel_id in channel_ids:
+    for guild_id, channel_id, tags in channels_info:
         channel = bot.get_channel(channel_id)
 
         if not channel:
@@ -35,20 +35,22 @@ async def broadcast_report_to_servers(
                 channel = await bot.fetch_channel(channel_id)
             except (discord.NotFound, discord.Forbidden):
                 log_event(
-                    None,
+                    guild_id,
                     LogLevel.WARNING,
-                    f"Unable to access configured channel {channel_id} (bot was kicked or channel was deleted).",
+                    f"Unable to access configured channel {channel_id} for '{cron_type}' "
+                    "(bot was kicked or channel was deleted).",
                 )
                 continue
 
         if not channel:
             continue
 
-        guild_id = (
-            channel.guild.id if hasattr(channel, "guild") and channel.guild else None
-        )
+        raw_messages = [report_data] if isinstance(report_data, str) else list(report_data)
 
-        for msg in messages:
+        if tags and raw_messages:
+            raw_messages[0] = f"{tags.strip()}\n{raw_messages[0]}"
+
+        for msg in raw_messages:
             chunks = split_message_smartly(msg)
             for chunk in chunks:
                 try:
@@ -58,7 +60,7 @@ async def broadcast_report_to_servers(
                     log_event(
                         guild_id,
                         LogLevel.ERROR,
-                        f"Missing permissions to send broadcast message in channel {channel_id}.",
+                        f"Missing permissions to send '{cron_type}' broadcast in channel {channel_id}.",
                     )
                 except (
                     discord.HTTPException,
@@ -68,6 +70,6 @@ async def broadcast_report_to_servers(
                     log_event(
                         guild_id,
                         LogLevel.ERROR,
-                        f"Failed to send broadcast to channel {channel_id}: {exc}",
+                        f"Failed to send '{cron_type}' broadcast to channel {channel_id}: {exc}",
                         exc=exc,
                     )
