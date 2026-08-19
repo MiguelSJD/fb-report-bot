@@ -9,35 +9,41 @@ import discord
 from models.log_level import LogLevel
 from utils.logger import log_event
 from utils.settings_db import get_guild_cron_configs
+from utils.settings_helper import CronChannelsListView
 
 
-async def handle_list_cron_channels(interaction: discord.Interaction) -> None:
+async def handle_list_cron_channels(
+    interaction: discord.Interaction, cron_type: str | None = None
+) -> None:
     """Handle the list-cron-channels slash command logic."""
     guild_id = interaction.guild_id if interaction.guild else None
 
     try:
         configs = get_guild_cron_configs(interaction.guild_id)
+
+        if cron_type:
+            configs = [c for c in configs if c[0] == cron_type]
+
         if not configs:
+            msg = (
+                f"ℹ️ No cron report channels are configured for **`{cron_type}`**."
+                if cron_type
+                else "ℹ️ No cron report channels are currently configured for this server."
+            )
             await interaction.response.send_message(
-                content="ℹ️ No cron report channels are currently configured for this server.",
+                content=msg,
                 ephemeral=True,
             )
             return
 
-        embed = discord.Embed(
-            title="⚙️ Configured Cron Channels",
-            color=discord.Color.blue(),
+        view = CronChannelsListView(
+            guild_id=interaction.guild_id,
+            configs=configs,
+            filter_cron_type=cron_type,
         )
-
-        for cron_type, channel_id, tags in configs:
-            tags_str = f" | Tags: `{tags}`" if tags else ""
-            embed.add_field(
-                name=f"📌 {cron_type}",
-                value=f"Channel: <#{channel_id}>{tags_str}",
-                inline=False,
-            )
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(
+            embed=view.build_embed(), view=view, ephemeral=True
+        )
     except (
         sqlite3.Error,
         discord.HTTPException,

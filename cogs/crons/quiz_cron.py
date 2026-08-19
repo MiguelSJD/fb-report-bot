@@ -41,7 +41,7 @@ class QuizCron(commands.Cog):
 
             if quiz_data:
                 await broadcast_report_to_servers(
-                    self.bot, quiz_data, cron_type=CRON_TYPE_CHOICES["QUIZ"]
+                    self.bot, quiz_data, cron_type=CRON_TYPE_CHOICES["quiz"]
                 )
                 log_event(None, LogLevel.INFO, "Quiz cron completed successfully.")
             else:

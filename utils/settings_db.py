@@ -84,7 +84,7 @@ def get_cron_channels_by_type(cron_type: str) -> list[tuple[int, int, str]]:
             """
             SELECT guild_id, channel_id, tags 
             FROM cron_jobs 
-            WHERE cron_type = ? AND is_enabled = 1
+            WHERE LOWER(cron_type) = LOWER(?) AND is_enabled = 1
             """,
             (cron_type,),
         )

@@ -20,18 +20,18 @@ async def handle_quiz_list(interaction: discord.Interaction) -> None:
         questions = get_all_questions()
         if not questions:
             await interaction.response.send_message(
-                "📝 **Quiz Questions List:**\n*No questions found.*",
+                embed=discord.Embed(
+                    title="📝 Quiz Questions List",
+                    description="*No questions found.*",
+                    color=discord.Color.blue(),
+                ),
                 ephemeral=True,
             )
             return
 
-        content = "📝 **Quiz Questions List:**\n\n" + "\n".join(
-            f"• `{q_id[:8]}`: {text} *(Full ID: `{q_id}`)*" for q_id, text in questions
-        )
         view = QuizListView(questions)
-        await interaction.response.send_message(
-            content=content, view=view, ephemeral=True
-        )
+        embed = view.build_embed()
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     except (
         sqlite3.Error,
         discord.HTTPException,
