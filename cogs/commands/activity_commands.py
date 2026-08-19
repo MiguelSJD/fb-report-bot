@@ -6,7 +6,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from commands.activity.activity import handle_activity_report
+from commands.activity.activity_report import handle_activity_report
 from utils.permissions import has_required_roles
 
 

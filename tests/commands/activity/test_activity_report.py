@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import discord
 import pytest
 
-from commands.activity.activity import handle_activity_report
+from commands.activity.activity_report import handle_activity_report
 
 
 @pytest.mark.asyncio
@@ -28,11 +28,11 @@ async def test_handle_activity_report_user_not_found(monkeypatch):
     ]
 
     monkeypatch.setattr(
-        "commands.activity_report.get_activity_worksheet",
+        "commands.activity.activity_report.get_activity_worksheet",
         lambda tab_name: mock_worksheet,
     )
     monkeypatch.setattr(
-        "commands.activity_report.log_event", lambda *args, **kwargs: None
+        "commands.activity.activity_report.log_event", lambda *args, **kwargs: None
     )
 
     await handle_activity_report(mock_interaction, mock_target_user)
@@ -82,11 +82,11 @@ async def test_handle_activity_report_success(monkeypatch):
     ]
 
     monkeypatch.setattr(
-        "commands.activity_report.get_activity_worksheet",
+        "commands.activity.activity_report.get_activity_worksheet",
         lambda tab_name: mock_worksheet,
     )
     monkeypatch.setattr(
-        "commands.activity_report.log_event", lambda *args, **kwargs: None
+        "commands.activity.activity_report.log_event", lambda *args, **kwargs: None
     )
 
     await handle_activity_report(mock_interaction, mock_target_user)
@@ -134,11 +134,11 @@ async def test_handle_activity_report_dm_forbidden(monkeypatch):
     mock_worksheet.get_all_values.return_value = [["12345", "HunterMod", "4", "20"]]
 
     monkeypatch.setattr(
-        "commands.activity_report.get_activity_worksheet",
+        "commands.activity.activity_report.get_activity_worksheet",
         lambda tab_name: mock_worksheet,
     )
     monkeypatch.setattr(
-        "commands.activity_report.log_event", lambda *args, **kwargs: None
+        "commands.activity.activity_report.log_event", lambda *args, **kwargs: None
     )
 
     await handle_activity_report(mock_interaction, mock_target_user)
@@ -162,9 +162,9 @@ async def test_handle_activity_report_exception_handling(monkeypatch):
     def raise_error(tab_name):
         raise RuntimeError("Sheets API down")
 
-    monkeypatch.setattr("commands.activity_report.get_activity_worksheet", raise_error)
+    monkeypatch.setattr("commands.activity.activity_report.get_activity_worksheet", raise_error)
     monkeypatch.setattr(
-        "commands.activity_report.log_event", lambda *args, **kwargs: None
+        "commands.activity.activity_report.log_event", lambda *args, **kwargs: None
     )
 
     await handle_activity_report(mock_interaction, mock_target_user)

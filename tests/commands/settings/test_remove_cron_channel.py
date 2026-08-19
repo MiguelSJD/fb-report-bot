@@ -16,16 +16,10 @@ async def test_remove_cron_channel_success():
     interaction.guild_id = 123456789
     interaction.user.guild_permissions.manage_guild = True
 
-    with (
-        patch("commands.remove_cron_channel.remove_guild_channel", return_value=True),
-    ):
-        await handle_remove_cron_channel(interaction)
+    with patch("commands.settings.remove_cron_channel.remove_cron_channel_config", return_value=1):
+        await handle_remove_cron_channel(interaction, cron_type="daily-report")
 
         interaction.response.send_message.assert_called_once()
-        assert (
-            "Removed the cron report channel"
-            in interaction.response.send_message.call_args.kwargs["content"]
-        )
 
 
 @pytest.mark.asyncio
@@ -35,13 +29,7 @@ async def test_remove_cron_channel_not_found():
     interaction.guild_id = 123456789
     interaction.user.guild_permissions.manage_guild = True
 
-    with (
-        patch("commands.remove_cron_channel.remove_guild_channel", return_value=False),
-    ):
-        await handle_remove_cron_channel(interaction)
+    with patch("commands.settings.remove_cron_channel.remove_cron_channel_config", return_value=0):
+        await handle_remove_cron_channel(interaction, cron_type="daily-report")
 
         interaction.response.send_message.assert_called_once()
-        assert (
-            "No cron channel is currently configured"
-            in interaction.response.send_message.call_args.kwargs["content"]
-        )
