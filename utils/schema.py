@@ -32,6 +32,3 @@ def initialize_database() -> None:
         log_event(
             None, LogLevel.CRITICAL, f"Failed to initialize database: {exc}", exc=exc
         )
-
-
-initialize_database()

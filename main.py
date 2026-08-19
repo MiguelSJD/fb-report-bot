@@ -16,6 +16,7 @@ sys.path.insert(0, project_root)
 from config import DISCORD_TOKEN
 from models.log_level import LogLevel
 from utils.logger import log_event
+from utils.schema import initialize_database
 
 if not DISCORD_TOKEN:
     log_event(
@@ -30,6 +31,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 async def main():
     try:
         log_event(None, LogLevel.INFO, "Starting F&B Bot process...")
+
+        initialize_database()
 
         cogs_dir = os.path.join(project_root, "cogs")
         if os.path.exists(cogs_dir):
