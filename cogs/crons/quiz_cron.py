@@ -28,11 +28,11 @@ class QuizCron(commands.Cog):
     def cog_unload(self):
         self.quiz_task.cancel()
 
-    @tasks.loop(seconds=60)
+    @tasks.loop(time=CRON_TIMES)
     async def quiz_task(self):
         weekday = datetime.datetime.now(datetime.timezone.utc).weekday()
 
-        if weekday == Weekday.MONDAY:
+        if weekday != Weekday.MONDAY:
             return
 
         try:
