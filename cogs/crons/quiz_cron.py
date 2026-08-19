@@ -7,9 +7,9 @@ import datetime
 
 import discord
 from discord.ext import commands, tasks
+from models.cron_type import CronType
 
 from commands.quiz.quiz import generate_quiz_message
-from models.cron_type import CronType
 from models.log_level import LogLevel
 from models.weekday import Weekday
 from utils.broadcaster import broadcast_report_to_servers
@@ -51,7 +51,9 @@ class QuizCron(commands.Cog):
                     "Quiz cron skipped: Not enough questions found in database (minimum 5 required).",
                 )
         except (discord.HTTPException, discord.DiscordException, OSError) as exc:
-            log_event(None, LogLevel.ERROR, f"Quiz CRON Execution Error: {exc}", exc=exc)
+            log_event(
+                None, LogLevel.ERROR, f"Quiz CRON Execution Error: {exc}", exc=exc
+            )
 
     @quiz_task.before_loop
     async def before_task(self):

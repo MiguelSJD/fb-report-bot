@@ -3,6 +3,7 @@ Slash command handler for setting cron report channels.
 """
 
 import sqlite3
+
 import discord
 
 from models.log_level import LogLevel

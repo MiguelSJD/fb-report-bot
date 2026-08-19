@@ -3,6 +3,7 @@ Slash command handler for listing all configured cron channels for a server.
 """
 
 import sqlite3
+
 import discord
 
 from models.log_level import LogLevel

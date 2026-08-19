@@ -3,6 +3,7 @@ Slash command handler for removing cron report channel settings.
 """
 
 import sqlite3
+
 import discord
 
 from models.log_level import LogLevel

@@ -37,9 +37,7 @@ class SettingsCommandsCog(commands.Cog):
         channel: discord.TextChannel,
         tags: str | None = None,
     ):
-        await handle_set_cron_channel(
-            interaction, cron_type.value, channel, tags=tags
-        )
+        await handle_set_cron_channel(interaction, cron_type.value, channel, tags=tags)
 
     @app_commands.command(
         name="remove-cron-channel",

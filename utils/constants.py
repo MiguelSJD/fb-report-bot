@@ -30,4 +30,3 @@ CRON_TYPE_CHOICES: Final[tuple[app_commands.Choice[str], ...]] = (
     app_commands.Choice[str](name="Weekly Report", value="weekly-report"),
     app_commands.Choice[str](name="Quiz", value="quiz"),
 )
-
