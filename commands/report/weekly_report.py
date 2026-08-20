@@ -20,26 +20,28 @@ from utils.formatting import (
 )
 from utils.google_sheets import get_report_worksheet
 from utils.logger import log_event
-from utils.report_helper import extract_row_data
+from utils.report_helper import evaluate_weekly_collection_rule, extract_row_data
 
 
 @dataclass(frozen=True)
 class WeeklyTop10ReportConfig:
     lookback_days_trigger: str = "6"
     start_row_idx: int = 3
+    max_topics: int = 10
 
 
 CONFIG = WeeklyTop10ReportConfig()
 
 
 def generate_weekly_top_10_report(worksheet) -> list[str]:
-    """Generate a weekly top 10 report from configured worksheet rows."""
+    """Generate a weekly top 10 report applying strict topic collection rules."""
     trigger_sheet_update(worksheet, CONFIG.lookback_days_trigger)
 
     all_values = worksheet.get_all_values()
 
     topics_dict = {}
-    seen_category_subcategories = set()
+    seen_cat_subcats = set()
+    seen_observations = set()
 
     for row in all_values[CONFIG.start_row_idx :]:
         (
@@ -56,22 +58,31 @@ def generate_weekly_top_10_report(worksheet) -> list[str]:
             break
 
         category, subcategory = parse_topic_string(topic_raw)
-
-        if (category, subcategory) in seen_category_subcategories:
-            continue
-
-        seen_category_subcategories.add((category, subcategory))
-
         obs_sanitized = sanitize_markdown(observation)
         topic_key = (category, obs_sanitized)
 
-        if topic_key in topics_dict:
-            if subcategory:
+        rule_action = evaluate_weekly_collection_rule(
+            category=category,
+            subcategory=subcategory,
+            obs_sanitized=obs_sanitized,
+            seen_cat_subcats=seen_cat_subcats,
+            seen_observations=seen_observations,
+            topics_dict=topics_dict,
+        )
+
+        if rule_action == "SKIP":
+            continue
+
+        if rule_action == "APPEND_SUBCAT":
+            if (
+                subcategory
+                and subcategory not in topics_dict[topic_key]["subcategories"]
+            ):
                 topics_dict[topic_key]["subcategories"].append(subcategory)
-            if screenshot_link:
-                topics_dict[topic_key]["screenshots"].append(screenshot_link)
-        else:
-            if len(topics_dict) >= 10:
+            seen_cat_subcats.add((category, subcategory))
+
+        elif rule_action == "CREATE_CARD":
+            if len(topics_dict) >= CONFIG.max_topics:
                 break
 
             topics_dict[topic_key] = {
@@ -82,6 +93,9 @@ def generate_weekly_top_10_report(worksheet) -> list[str]:
                 "solution": sanitize_markdown(solution),
                 "screenshots": [screenshot_link] if screenshot_link else [],
             }
+
+            seen_cat_subcats.add((category, subcategory))
+            seen_observations.add(obs_sanitized)
 
     if not topics_dict:
         return ["No valid reports"]

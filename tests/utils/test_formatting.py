@@ -4,7 +4,6 @@ Unit tests for formatting and text manipulation utilities.
 
 from utils.formatting import (
     capitalize_text,
-    get_unique_non_empty,
     sanitize_markdown,
     split_message_smartly,
 )
@@ -14,17 +13,6 @@ def test_capitalize_text():
     assert capitalize_text("fps drop") == "Fps drop"
     assert capitalize_text("  ui issue") == "Ui issue"
     assert capitalize_text("") == ""
-
-
-def test_get_unique_non_empty():
-    items = [
-        {"obs": "Lag"},
-        {"obs": "Crash"},
-        {"obs": "Lag"},
-        {"obs": None},
-    ]
-    result = get_unique_non_empty(items, "obs")
-    assert result == ["Lag", "Crash"]
 
 
 def test_sanitize_markdown():

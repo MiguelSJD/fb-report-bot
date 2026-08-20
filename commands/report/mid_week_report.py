@@ -3,6 +3,7 @@ Mid-week report generator module for F&B Bot.
 """
 
 import asyncio
+import datetime
 from dataclasses import dataclass
 
 import discord
@@ -42,6 +43,10 @@ def generate_mid_week_report(worksheet) -> list[str]:
     topics_dict = {}
     seen_category_subcats = set()
 
+    historical_seen_pairs = set()
+
+    summary_categories = {}
+
     for row in all_values[CONFIG.start_row_idx :]:
         (
             date_val,
@@ -59,12 +64,27 @@ def generate_mid_week_report(worksheet) -> list[str]:
         vote_count = parse_vote_count(votes_raw)
         category, subcategory = parse_topic_string(topic_raw)
 
+        obs_sanitized = sanitize_markdown(observation)
+        pair_key = (category.lower(), obs_sanitized.lower())
+
+        is_duplicate = pair_key in historical_seen_pairs
+        if not is_duplicate:
+            historical_seen_pairs.add(pair_key)
+
+        if category not in summary_categories:
+            summary_categories[category] = []
+        summary_categories[category].append(
+            {
+                "obs": obs_sanitized,
+                "votes": vote_count,
+                "is_duplicate": is_duplicate,
+            }
+        )
+
         if (category, subcategory) in seen_category_subcats:
             continue
 
         seen_category_subcats.add((category, subcategory))
-
-        obs_sanitized = sanitize_markdown(observation)
         topic_key = (category, obs_sanitized)
 
         if topic_key in topics_dict:
@@ -87,10 +107,38 @@ def generate_mid_week_report(worksheet) -> list[str]:
                 "screenshots": [screenshot_link] if screenshot_link else [],
             }
 
-    if not topics_dict:
+    if not summary_categories and not topics_dict:
         return ["No valid reports"]
 
-    return [
+    today = datetime.datetime.now(datetime.timezone.utc)
+    start_date = today - datetime.timedelta(days=int(CONFIG.lookback_days_trigger))
+    date_str = (
+        f"Period: {start_date.strftime('%d/%m/%Y')} to {today.strftime('%d/%m/%Y')}"
+    )
+
+    summary_blocks = ["📈 Mid-Week Feedback Report", date_str, "---"]
+
+    category_totals = []
+    for cat, items in summary_categories.items():
+        cat_total_votes = sum(
+            item["votes"] for item in items if not item["is_duplicate"]
+        )
+        category_totals.append((cat, cat_total_votes, items))
+
+    category_totals.sort(key=lambda x: x[1], reverse=True)
+
+    for cat, cat_total, items in category_totals:
+        summary_blocks.append(f"\n### 📁 {cat} (`{cat_total}` total votes)")
+        items_sorted = sorted(items, key=lambda x: x["votes"], reverse=True)
+        for item in items_sorted:
+            if item["is_duplicate"]:
+                summary_blocks.append(f"• **{item['obs']}** — Already counted")
+            else:
+                summary_blocks.append(f"• **{item['obs']}** — `{item['votes']}` votes")
+
+    summary_message = "\n".join(summary_blocks)
+
+    detailed_cards = [
         format_topic_report_card(
             rank=rank,
             category=data["category"],
@@ -103,6 +151,8 @@ def generate_mid_week_report(worksheet) -> list[str]:
         )
         for rank, data in enumerate(topics_dict.values(), start=1)
     ]
+
+    return [summary_message] + detailed_cards
 
 
 async def handle_mid_week_report(interaction: discord.Interaction):

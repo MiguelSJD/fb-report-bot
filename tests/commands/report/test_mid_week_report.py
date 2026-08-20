@@ -10,7 +10,7 @@ from utils.constants import DATE_FORMAT
 
 
 def test_generate_mid_week_report_detail_formatting():
-    """Test topic card formatting via the public generate_mid_week_report interface."""
+    """Test summary header and topic card formatting via generate_mid_week_report."""
     today = datetime.now(timezone.utc).strftime(DATE_FORMAT)
 
     mock_values = [
@@ -33,9 +33,16 @@ def test_generate_mid_week_report_detail_formatting():
 
     messages = generate_mid_week_report(mock_worksheet)
 
-    assert len(messages) == 1
-    card_msg = messages[0]
+    # Message 0: Summary header block
+    # Message 1: First detailed topic card
+    assert len(messages) == 2
 
+    summary_msg = messages[0]
+    assert "📈 Mid-Week Feedback Report" in summary_msg
+    assert "### 📁 Performance (`100` total votes)" in summary_msg
+    assert "• **High GPU usage** — `100` votes" in summary_msg
+
+    card_msg = messages[1]
     assert "# **---  1. Topic: Performance  ---**" in card_msg
     assert "Sum Votes = 100" in card_msg
     assert "- FPS Drop" in card_msg
@@ -45,15 +52,15 @@ def test_generate_mid_week_report_detail_formatting():
     assert "**Screenshots:**\nhttps://screenshot.link/1.png" in card_msg
 
 
-def test_generate_mid_week_report_deduplication_and_screenshots():
-    """Edge Case: Test strict category/subcategory deduplication and combining multiple screenshots."""
+def test_generate_mid_week_report_deduplication_and_already_counted():
+    """Test deduplication where matching (category, observation) pairs mark items as 'Already counted'."""
     today = datetime.now(timezone.utc).strftime(DATE_FORMAT)
 
     mock_values = [
         [],
         [],
         [],
-        # Row 1: Migo Store = Crates
+        # Row 1: First occurrence of Obs 1 (100 votes)
         [
             today,
             "https://link1.com",
@@ -61,9 +68,9 @@ def test_generate_mid_week_report_deduplication_and_screenshots():
             "Obs 1",
             "Cons 1",
             "Sol 1",
-            "50",
+            "100",
         ],
-        # Row 2: Same Category & Subcategory, different observation -> MUST BE SKIPPED GLOBALLY
+        # Row 2: Same Category & Subcategory, new Observation Obs 2 (50 votes)
         [
             today,
             "https://link2.com",
@@ -73,7 +80,7 @@ def test_generate_mid_week_report_deduplication_and_screenshots():
             "Sol 2",
             "50",
         ],
-        # Row 3: Same Topic (Category + Obs 1), new Subcategory -> MUST BE AGGREGATED
+        # Row 3: Duplicate (Category, Obs 1) with lower/equal votes -> Marked "Already counted"
         [
             today,
             "https://link3.com",
@@ -81,7 +88,7 @@ def test_generate_mid_week_report_deduplication_and_screenshots():
             "Obs 1",
             "Cons 1",
             "Sol 1",
-            "100",
+            "30",
         ],
     ]
 
@@ -90,21 +97,26 @@ def test_generate_mid_week_report_deduplication_and_screenshots():
 
     messages = generate_mid_week_report(mock_worksheet)
 
-    assert len(messages) == 1
-    card_msg = messages[0]
+    assert len(messages) == 2
+    summary_msg = messages[0]
+    card_msg = messages[1]
 
-    # Row 1 (50 votes) + Row 3 (100 votes) = 150 votes (Row 2 was skipped as duplicate subcategory)
-    assert "Sum Votes = 150" in card_msg
+    # Summary checks: Row 1 (100) + Row 2 (50) = 150 total votes. Row 3 (30) is ignored as "Already counted"
+    assert "### 📁 Migo store (`150` total votes)" in summary_msg
+    assert "• **Obs 1** — `100` votes" in summary_msg
+    assert "• **Obs 2** — `50` votes" in summary_msg
+    assert "• **Obs 1** — Already counted" in summary_msg
+
+    # Detailed card checks
     assert "- Bring back crates" in card_msg
     assert "- Remove bug items" in card_msg
-    # Link 1 and Link 3 included; Link 2 skipped
     assert "https://link1.com" in card_msg
     assert "https://link2.com" not in card_msg
     assert "https://link3.com" in card_msg
 
 
 def test_generate_mid_week_report_top_5_topic_limit():
-    """Edge Case: Test top 5 topic limit ignores 6th new topic but continues parsing for top 5."""
+    """Test top 5 topic limit ignores 6th new topic for detailed cards while generating summary."""
     today = datetime.now(timezone.utc).strftime(DATE_FORMAT)
 
     mock_values = [
@@ -116,7 +128,7 @@ def test_generate_mid_week_report_top_5_topic_limit():
         [today, "", "Top 3=Sub 3", "Obs 3", "Cons 3", "Sol 3", "10"],
         [today, "", "Top 4=Sub 4", "Obs 4", "Cons 4", "Sol 4", "10"],
         [today, "", "Top 5=Sub 5", "Obs 5", "Cons 5", "Sol 5", "10"],
-        # 6th unique (category, observation) topic -> Skipped
+        # 6th unique topic -> Skipped for detailed cards
         [today, "", "Top 6=Sub 6", "Obs 6", "Cons 6", "Sol 6", "10"],
         # Subcategory belonging to Top 1 -> Processed & added
         [today, "", "Top 1=Sub Extra", "Obs 1", "Cons 1", "Sol 1", "20"],
@@ -127,9 +139,14 @@ def test_generate_mid_week_report_top_5_topic_limit():
 
     messages = generate_mid_week_report(mock_worksheet)
 
-    assert len(messages) == 5
-    top_1_card = messages[0]
-    assert "Sum Votes = 30" in top_1_card  # 10 + 20
+    # 1 Summary message + 5 detailed topic cards = 6 messages total
+    assert len(messages) == 6
+
+    summary_msg = messages[0]
+    assert "📈 Mid-Week Feedback Report" in summary_msg
+
+    top_1_card = messages[1]
+    assert "Sum Votes = 30" in top_1_card
     assert "- Sub 1" in top_1_card
     assert "- Sub Extra" in top_1_card
 
