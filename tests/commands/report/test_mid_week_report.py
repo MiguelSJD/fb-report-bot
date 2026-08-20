@@ -40,7 +40,7 @@ def test_generate_mid_week_report_detail_formatting():
     summary_msg = messages[0]
     assert "📈 Mid-Week Feedback Report" in summary_msg
     assert "### 📁 Performance (`100` total votes)" in summary_msg
-    assert "• **High GPU usage** — `100` votes" in summary_msg
+    assert "• **FPS Drop** — `100` votes" in summary_msg
 
     card_msg = messages[1]
     assert "# **---  1. Topic: Performance  ---**" in card_msg
@@ -53,14 +53,14 @@ def test_generate_mid_week_report_detail_formatting():
 
 
 def test_generate_mid_week_report_deduplication_and_already_counted():
-    """Test deduplication where matching (category, observation) pairs mark items as 'Already counted'."""
+    """Test subcategory vote aggregation and total category vote calculation in summary."""
     today = datetime.now(timezone.utc).strftime(DATE_FORMAT)
 
     mock_values = [
         [],
         [],
         [],
-        # Row 1: First occurrence of Obs 1 (100 votes)
+        # Row 1: Subcategory "Bring back crates" (100 votes)
         [
             today,
             "https://link1.com",
@@ -70,7 +70,7 @@ def test_generate_mid_week_report_deduplication_and_already_counted():
             "Sol 1",
             "100",
         ],
-        # Row 2: Same Category & Subcategory, new Observation Obs 2 (50 votes)
+        # Row 2: Subcategory "Bring back crates" (50 votes)
         [
             today,
             "https://link2.com",
@@ -80,7 +80,7 @@ def test_generate_mid_week_report_deduplication_and_already_counted():
             "Sol 2",
             "50",
         ],
-        # Row 3: Duplicate (Category, Obs 1) with lower/equal votes -> Marked "Already counted"
+        # Row 3: Subcategory "Remove bug items" (30 votes)
         [
             today,
             "https://link3.com",
@@ -101,11 +101,11 @@ def test_generate_mid_week_report_deduplication_and_already_counted():
     summary_msg = messages[0]
     card_msg = messages[1]
 
-    # Summary checks: Row 1 (100) + Row 2 (50) = 150 total votes. Row 3 (30) is ignored as "Already counted"
-    assert "### 📁 Migo store (`150` total votes)" in summary_msg
-    assert "• **Obs 1** — `100` votes" in summary_msg
-    assert "• **Obs 2** — `50` votes" in summary_msg
-    assert "• **Obs 1** — Already counted" in summary_msg
+    # Total category votes: 100 + 50 + 30 = 180 total votes
+    assert "### 📁 Migo store (`180` total votes)" in summary_msg
+    assert "• **Bring back crates** — `100` votes" in summary_msg
+    assert "• **Bring back crates** — `50` votes" in summary_msg
+    assert "• **Remove bug items** — `30` votes" in summary_msg
 
     # Detailed card checks
     assert "- Bring back crates" in card_msg

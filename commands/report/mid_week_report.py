@@ -43,8 +43,6 @@ def generate_mid_week_report(worksheet) -> list[str]:
     topics_dict = {}
     seen_category_subcats = set()
 
-    historical_seen_pairs = set()
-
     summary_categories = {}
 
     for row in all_values[CONFIG.start_row_idx :]:
@@ -65,19 +63,15 @@ def generate_mid_week_report(worksheet) -> list[str]:
         category, subcategory = parse_topic_string(topic_raw)
 
         obs_sanitized = sanitize_markdown(observation)
-        pair_key = (category.lower(), obs_sanitized.lower())
-
-        is_duplicate = pair_key in historical_seen_pairs
-        if not is_duplicate:
-            historical_seen_pairs.add(pair_key)
+        subcat_sanitized = sanitize_markdown(subcategory)
 
         if category not in summary_categories:
             summary_categories[category] = []
+
         summary_categories[category].append(
             {
-                "obs": obs_sanitized,
+                "subcat": subcat_sanitized if subcat_sanitized else obs_sanitized,
                 "votes": vote_count,
-                "is_duplicate": is_duplicate,
             }
         )
 
@@ -120,9 +114,7 @@ def generate_mid_week_report(worksheet) -> list[str]:
 
     category_totals = []
     for cat, items in summary_categories.items():
-        cat_total_votes = sum(
-            item["votes"] for item in items if not item["is_duplicate"]
-        )
+        cat_total_votes = sum(item["votes"] for item in items)
         category_totals.append((cat, cat_total_votes, items))
 
     category_totals.sort(key=lambda x: x[1], reverse=True)
@@ -131,12 +123,13 @@ def generate_mid_week_report(worksheet) -> list[str]:
         summary_blocks.append(f"\n### 📁 {cat} (`{cat_total}` total votes)")
         items_sorted = sorted(items, key=lambda x: x["votes"], reverse=True)
         for item in items_sorted:
-            if item["is_duplicate"]:
-                summary_blocks.append(f"• **{item['obs']}** — Already counted")
-            else:
-                summary_blocks.append(f"• **{item['obs']}** — `{item['votes']}` votes")
+            summary_blocks.append(f"• **{item['subcat']}** — `{item['votes']}` votes")
 
     summary_message = "\n".join(summary_blocks)
+
+    sorted_topics = sorted(
+        topics_dict.values(), key=lambda data: data["votes"], reverse=True
+    )
 
     detailed_cards = [
         format_topic_report_card(
@@ -149,7 +142,7 @@ def generate_mid_week_report(worksheet) -> list[str]:
             solution=data["solution"],
             screenshots=data["screenshots"],
         )
-        for rank, data in enumerate(topics_dict.values(), start=1)
+        for rank, data in enumerate(sorted_topics, start=1)
     ]
 
     return [summary_message] + detailed_cards
